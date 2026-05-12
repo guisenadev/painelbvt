@@ -1,0 +1,14 @@
+name = "site-factory-worker"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+GITHUB_USERNAME = "bmverificada"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "site-factory-db"
+database_id = "7810c353-3340-4310-b9ff-f7d607d7f6fe"

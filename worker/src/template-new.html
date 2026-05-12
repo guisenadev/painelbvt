@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="facebook-domain-verification" content="y28vtv8ikd6371dad3g0eui71gj611" />
+  <title>{{RAZAO_SOCIAL}}</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --black: #0a0a0a;
+      --white: #ffffff;
+      --gray-50: #fafafa;
+      --gray-100: #f4f4f5;
+      --gray-200: #e4e4e7;
+      --gray-400: #a1a1aa;
+      --gray-600: #52525b;
+      --gray-800: #27272a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--white);
+      color: var(--black);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 2rem;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-tag {
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gray-400);
+    }
+
+    .header-verified {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--gray-600);
+      font-weight: 400;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #18181b;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 5rem 2rem 3rem;
+      text-align: center;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .avatar {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid var(--gray-200);
+      margin: 0 auto 1.5rem;
+      display: block;
+    }
+
+    .avatar-placeholder {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      margin: 0 auto 1.5rem;
+      display: block;
+    }
+
+    .hero-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      font-weight: 400;
+      color: var(--black);
+      line-height: 1.2;
+      margin-bottom: 0.6rem;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-cnpj {
+      font-size: 0.78rem;
+      color: var(--gray-400);
+      letter-spacing: 0.06em;
+      font-weight: 400;
+      margin-bottom: 2rem;
+    }
+
+    .hero-desc {
+      font-size: 0.95rem;
+      color: var(--gray-600);
+      line-height: 1.75;
+      font-weight: 300;
+      max-width: 480px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .cta-group {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-dark {
+      background: var(--black);
+      color: var(--white);
+      padding: 0.7rem 1.6rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      transition: opacity 0.2s;
+    }
+    .btn-dark:hover { opacity: 0.8; }
+
+    .btn-light {
+      background: var(--white);
+      color: var(--black);
+      padding: 0.7rem 1.6rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      border: 1px solid var(--gray-200);
+      transition: background 0.2s;
+    }
+    .btn-light:hover { background: var(--gray-50); }
+
+    /* ── DIVIDER ── */
+    .divider {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      border: none;
+      border-top: 1px solid var(--gray-200);
+    }
+
+    /* ── INFO SECTION ── */
+    .section {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+      animation: fadeUp 0.6s ease 0.15s both;
+    }
+
+    .section-label {
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gray-400);
+      margin-bottom: 1.5rem;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+
+    .info-item {
+      padding: 1.2rem 0;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .info-item:nth-child(odd) { padding-right: 2rem; }
+
+    .info-key {
+      font-size: 0.72rem;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 500;
+      margin-bottom: 0.3rem;
+    }
+
+    .info-val {
+      font-size: 0.9rem;
+      color: var(--black);
+      font-weight: 400;
+      line-height: 1.5;
+    }
+
+    /* ── CONTACT ── */
+    .contact-section {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 2rem 4rem;
+      animation: fadeUp 0.6s ease 0.25s both;
+    }
+
+    .contact-card {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 2rem;
+    }
+
+    .contact-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.9rem 0;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .contact-row:last-of-type { border-bottom: none; }
+
+    .contact-key {
+      font-size: 0.78rem;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 500;
+    }
+
+    .contact-val {
+      font-size: 0.88rem;
+      color: var(--black);
+      font-weight: 400;
+    }
+
+    .btn-whatsapp {
+      display: block;
+      background: var(--black);
+      color: var(--white);
+      text-align: center;
+      padding: 0.85rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      margin-top: 1.2rem;
+      transition: opacity 0.2s;
+    }
+    .btn-whatsapp:hover { opacity: 0.8; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--gray-200);
+      padding: 3rem 2rem;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+
+    .footer-brand {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1rem;
+      color: var(--black);
+      font-weight: 400;
+    }
+
+    .footer-brand span {
+      display: block;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.75rem;
+      color: var(--gray-400);
+      font-weight: 300;
+      margin-top: 2px;
+    }
+
+    .privacy-block h3 {
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gray-800);
+      margin-bottom: 0.8rem;
+    }
+
+    .privacy-block p {
+      font-size: 0.78rem;
+      color: var(--gray-600);
+      line-height: 1.7;
+      font-weight: 300;
+      max-width: 420px;
+    }
+
+    .footer-bottom {
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--gray-200);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .footer-copy {
+      font-size: 0.73rem;
+      color: var(--gray-400);
+      font-weight: 300;
+    }
+
+    .footer-cnpj {
+      font-size: 0.73rem;
+      color: var(--gray-400);
+      font-weight: 300;
+      letter-spacing: 0.04em;
+    }
+
+    @media (max-width: 600px) {
+      .info-grid { grid-template-columns: 1fr; }
+      .info-item:nth-child(odd) { padding-right: 0; }
+      .footer-top { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="header-tag">Página pública</span>
+  <div class="header-verified">
+    <span class="dot"></span>
+    Empresa verificada
+  </div>
+</header>
+
+<div class="hero">
+  {{FOTO_TAG}}
+  <h1 class="hero-name">{{NOME_TOPO}}</h1>
+  <p class="hero-cnpj">CNPJ {{CNPJ}}</p>
+  <p class="hero-desc">
+    Desenvolvemos e executamos estratégias eficientes, orientadas a resultados e ao crescimento sustentável do seu negócio.
+  </p>
+  <div class="cta-group">
+    {{WHATSAPP_BTN}}
+    <a href="#" class="btn-light">Instagram</a>
+  </div>
+</div>
+
+<hr class="divider">
+
+<div class="section">
+  <p class="section-label">Informações da empresa</p>
+  <div class="info-grid">
+    <div class="info-item">
+      <p class="info-key">Razão Social</p>
+      <p class="info-val">{{RAZAO_SOCIAL}}</p>
+    </div>
+    <div class="info-item">
+      <p class="info-key">CNPJ</p>
+      <p class="info-val">{{CNPJ}}</p>
+    </div>
+    <div class="info-item">
+      <p class="info-key">Endereço</p>
+      <p class="info-val">{{ENDERECO}}<br>{{BAIRRO}}</p>
+    </div>
+    <div class="info-item">
+      <p class="info-key">Cidade / Estado</p>
+      <p class="info-val">{{CIDADE}} — {{ESTADO}}<br>CEP {{CEP}}</p>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<div class="contact-section">
+  <p class="section-label" style="margin-bottom:1rem;">Contato</p>
+  <div class="contact-card">
+    {{CONTACT_ROWS}}
+    {{WHATSAPP_CARD_BTN}}
+  </div>
+</div>
+
+<footer>
+  <div class="footer-top">
+    <div class="footer-brand">
+      {{NOME_TOPO}}
+      <span>{{CIDADE}}, {{ESTADO}}</span>
+    </div>
+    <div class="privacy-block">
+      <h3>Política de Privacidade</h3>
+      <p>
+        Esta página é de caráter informativo. Os dados exibidos são de domínio público, obtidos junto à Receita Federal do Brasil. Não coletamos, armazenamos ou compartilhamos dados pessoais de visitantes. Ao entrar em contato via WhatsApp ou e-mail, você consente com o uso das informações fornecidas exclusivamente para fins de atendimento. Para dúvidas, entre em contato pelo canal disponível nesta página.
+      </p>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span class="footer-copy">© {{ANO}} {{RAZAO_SOCIAL}}. Todos os direitos reservados.</span>
+    <span class="footer-cnpj">CNPJ {{CNPJ}}</span>
+  </div>
+</footer>
+
+</body>
+</html>
