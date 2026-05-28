@@ -53,6 +53,23 @@ const clearAuth = () => {
   ['bvt_token','bvt_user','bvt_role','bvt_balance','bvt_nome','bvt_email','bvt_telefone'].forEach(k => localStorage.removeItem(k));
 };
 
+async function downloadSitePdf(siteId, razaoSocial) {
+  const token = localStorage.getItem('bvt_token');
+  try {
+    const r = await fetch(`${API}/sites/${siteId}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) { alert('Erro ao gerar comprovante'); return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `comprovante-${razaoSocial.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').substring(0, 40)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch { alert('Erro ao baixar comprovante'); }
+}
+
 // ── Maintenance ──────────────────────────────────────────────────
 function MaintenancePage() {
   return (
@@ -481,6 +498,9 @@ function VerificarPage({ api }) {
                     {st.label}
                   </span>
                   <div style={{ display: 'flex', gap: 4 }}>
+                    {s.status === 'live' && (
+                      <button style={{ background: 'transparent', border: 'none', color: P.textMuted, cursor: 'pointer', fontSize: 12, padding: '0 4px' }} title="baixar comprovante CNPJ" onClick={() => downloadSitePdf(s.id, s.razao_social)}>⬇</button>
+                    )}
                     <button style={{ background: 'transparent', border: 'none', color: P.textMuted, cursor: 'pointer', fontSize: 12, padding: '0 4px' }} title="editar" onClick={() => handleEdit(s)}>✎</button>
                     <button style={{ background: 'transparent', border: 'none', color: P.textDim, cursor: 'pointer', fontSize: 12, padding: '0 4px' }} title="deletar" onClick={() => handleDelete(s.id, s.razao_social)}>✕</button>
                   </div>
@@ -564,7 +584,10 @@ function SitesPage({ api }) {
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-{s.site_url && (
+                  {s.status === 'live' && (
+                    <button style={{ ...S.smBtn, color: P.accent, border: `1px solid ${P.accentDim}`, cursor: 'pointer' }} title="baixar comprovante CNPJ" onClick={() => downloadSitePdf(s.id, s.razao_social)}>comprovante</button>
+                  )}
+                  {s.site_url && (
                     <a href={s.site_url} target="_blank" rel="noreferrer" style={{ ...S.smBtn, color: P.green, border: `1px solid ${P.green}`, textDecoration: 'none' }}>abrir</a>
                   )}
                   <button style={{ ...S.smBtn, color: P.red, border: `1px solid ${P.redDim}`, cursor: 'pointer' }} onClick={() => handleDelete(s.id, s.razao_social)}>del</button>
