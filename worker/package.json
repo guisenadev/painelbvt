@@ -7,9 +7,7 @@
     "deploy": "wrangler deploy",
     "db:init": "wrangler d1 execute site-factory-db --file=./schema.sql"
   },
-  "dependencies": {
-    "pdf-lib": "^1.17.1"
-  },
+  "dependencies": {},
   "devDependencies": {
     "wrangler": "^3.22.0"
   }

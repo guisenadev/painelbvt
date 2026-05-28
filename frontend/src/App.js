@@ -53,23 +53,6 @@ const clearAuth = () => {
   ['bvt_token','bvt_user','bvt_role','bvt_balance','bvt_nome','bvt_email','bvt_telefone'].forEach(k => localStorage.removeItem(k));
 };
 
-async function downloadSitePdf(siteId, razaoSocial) {
-  const token = localStorage.getItem('bvt_token');
-  try {
-    const r = await fetch(`${API}/sites/${siteId}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!r.ok) { alert('Erro ao gerar comprovante'); return; }
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `comprovante-${razaoSocial.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').substring(0, 40)}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  } catch { alert('Erro ao baixar comprovante'); }
-}
-
 // ── Maintenance ──────────────────────────────────────────────────
 function MaintenancePage() {
   return (
@@ -109,55 +92,6 @@ function BvtLogo({ size = 32 }) {
       {/* code brackets on chest */}
       <text x="20" y="22" textAnchor="middle" fontSize="5" fill={P.accent} fontFamily="monospace" fontWeight="bold">&lt;/&gt;</text>
     </svg>
-  );
-}
-
-// ── Login Page ────────────────────────────────────────────────────
-function LoginPage({ onLogin }) {
-  const [form, setForm] = useState({ username: '', password: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const submit = async (e) => {
-    e.preventDefault(); setError(''); setLoading(true);
-    try {
-      const r = await fetch(`${API}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      const d = await r.json();
-      if (d.token) { saveAuth(d); onLogin(d); }
-      else setError(d.error || 'Erro ao entrar');
-    } catch { setError('Erro de conexão'); }
-    finally { setLoading(false); }
-  };
-
-  return (
-    <div style={{ minHeight: '100vh', background: P.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ width: '100%', maxWidth: 360 }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 32 }}>
-          <BvtLogo size={40} />
-          <div>
-            <div style={{ color: P.text, fontSize: 20, fontWeight: 700, fontFamily: 'monospace', letterSpacing: '-0.5px' }}>Painel BVT</div>
-            <div style={{ color: P.textMuted, fontSize: 11, fontFamily: 'monospace' }}>// verificação de business manager</div>
-          </div>
-        </div>
-
-        <div style={{ background: P.surface, border: `1px solid ${P.border}`, borderRadius: 6, padding: 24 }}>
-          <div style={{ color: P.textMuted, fontSize: 12, fontFamily: 'monospace', marginBottom: 20, borderBottom: `1px solid ${P.border}`, paddingBottom: 12 }}>
-            $ <span style={{ color: P.accent }}>bvt</span> login
-          </div>
-          <form onSubmit={submit}>
-            <Field label="username" value={form.username} onChange={v => setForm(p => ({ ...p, username: v }))} autoFocus />
-            <Field label="password" type="password" value={form.password} onChange={v => setForm(p => ({ ...p, password: v }))} />
-            {error && <div style={{ background: P.redDim, border: `1px solid ${P.red}`, color: P.red, borderRadius: 4, padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>{error}</div>}
-            <Btn type="submit" disabled={loading} fullWidth primary>{loading ? 'autenticando...' : '→ entrar'}</Btn>
-          </form>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -498,9 +432,6 @@ function VerificarPage({ api }) {
                     {st.label}
                   </span>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    {s.status === 'live' && (
-                      <button style={{ background: 'transparent', border: 'none', color: P.textMuted, cursor: 'pointer', fontSize: 12, padding: '0 4px' }} title="baixar comprovante CNPJ" onClick={() => downloadSitePdf(s.id, s.razao_social)}>⬇</button>
-                    )}
                     <button style={{ background: 'transparent', border: 'none', color: P.textMuted, cursor: 'pointer', fontSize: 12, padding: '0 4px' }} title="editar" onClick={() => handleEdit(s)}>✎</button>
                     <button style={{ background: 'transparent', border: 'none', color: P.textDim, cursor: 'pointer', fontSize: 12, padding: '0 4px' }} title="deletar" onClick={() => handleDelete(s.id, s.razao_social)}>✕</button>
                   </div>
@@ -519,80 +450,6 @@ function VerificarPage({ api }) {
                   <div style={{ color: P.green, fontSize: 10, fontFamily: 'monospace' }}>✓ verificação configurada</div>
                 )}
               </div>
-            );
-          })}
-        </div>
-      )}
-    </PageWrap>
-  );
-}
-
-// ── Sites ─────────────────────────────────────────────────────────
-function SitesPage({ api }) {
-  const [sites, setSites] = useState([]);
-  const [search, setSearch] = useState('');
-
-  const load = useCallback(async () => {
-    try { const d = await api('/sites'); if (Array.isArray(d)) setSites(d); } catch {}
-  }, [api]);
-
-  useEffect(() => { load(); const t = setInterval(load, 6000); return () => clearInterval(t); }, [load]);
-
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Deletar "${name}"?`)) return;
-    await api(`/sites/${id}`, 'DELETE');
-    load();
-  };
-
-  const filtered = sites.filter(s =>
-    s.razao_social?.toLowerCase().includes(search.toLowerCase()) ||
-    s.cnpj?.includes(search) ||
-    s.cidade?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <PageWrap>
-      <PageHeader title="sites de verificação" sub={`${sites.length} site${sites.length !== 1 ? 's' : ''} criado${sites.length !== 1 ? 's' : ''}`} />
-
-      {sites.length > 4 && (
-        <input style={S.searchInput} placeholder="// buscar nome, cnpj, cidade..."
-          value={search} onChange={e => setSearch(e.target.value)} />
-      )}
-
-      {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: P.textDim, fontFamily: 'monospace', fontSize: 13 }}>
-          // nenhum site criado ainda
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filtered.map(s => {
-            const st = STATUS_CFG[s.status] || STATUS_CFG.error;
-            return (
-              <Card key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '14px 16px' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ color: st.color, fontSize: 10, fontFamily: 'monospace', background: st.bg, border: `1px solid ${st.border}`, borderRadius: 3, padding: '1px 6px' }}>{st.label}</span>
-                    <span style={{ color: P.text, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.nome_topo || s.razao_social}</span>
-                  </div>
-                  <div style={{ color: P.textMuted, fontSize: 11, fontFamily: 'monospace' }}>
-                    {s.cnpj}{s.cidade ? ` · ${s.cidade}/${s.estado}` : ''}
-                  </div>
-                  {s.site_url && (
-                    <a href={s.site_url} target="_blank" rel="noreferrer" style={{ color: P.accent, fontSize: 11, fontFamily: 'monospace', textDecoration: 'none', display: 'block', marginTop: 3 }}>
-                      {s.site_url} ↗
-                    </a>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  {s.status === 'live' && (
-                    <button style={{ ...S.smBtn, color: P.accent, border: `1px solid ${P.accentDim}`, cursor: 'pointer' }} title="baixar comprovante CNPJ" onClick={() => downloadSitePdf(s.id, s.razao_social)}>comprovante</button>
-                  )}
-                  {s.site_url && (
-                    <a href={s.site_url} target="_blank" rel="noreferrer" style={{ ...S.smBtn, color: P.green, border: `1px solid ${P.green}`, textDecoration: 'none' }}>abrir</a>
-                  )}
-                  <button style={{ ...S.smBtn, color: P.red, border: `1px solid ${P.redDim}`, cursor: 'pointer' }} onClick={() => handleDelete(s.id, s.razao_social)}>del</button>
-                </div>
-              </Card>
             );
           })}
         </div>
@@ -666,187 +523,12 @@ function ContaPage({ api, auth, onUpdate }) {
   );
 }
 
-function ComprarPage({ api, onBalanceChange }) {
-  const [loading, setLoading] = useState(null); // pkg id sendo processado
-  const [payment, setPayment] = useState(null); // { id, qrCode, qrCodeBase64, amount, tokens }
-  const [copied, setCopied] = useState(false);
-  const [status, setStatus] = useState('pending'); // pending | approved | expired
-  const [timeLeft, setTimeLeft] = useState(30 * 60);
-  const [history, setHistory] = useState([]);
-  const [customQty, setCustomQty] = useState('');
-  const pollRef = useRef(null);
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    api('/payments').then(d => { if (Array.isArray(d)) setHistory(d); }).catch(() => {});
-  }, [api, status]);
-
-  const startPolling = useCallback((paymentId) => {
-    clearInterval(pollRef.current); clearInterval(timerRef.current);
-    setTimeLeft(30 * 60);
-    timerRef.current = setInterval(() => {
-      setTimeLeft(s => { if (s <= 1) { clearInterval(timerRef.current); return 0; } return s - 1; });
-    }, 1000);
-    pollRef.current = setInterval(async () => {
-      const d = await api(`/payments/status/${paymentId}`);
-      if (d.status === 'approved') {
-        setStatus('approved');
-        clearInterval(pollRef.current); clearInterval(timerRef.current);
-        onBalanceChange();
-      } else if (d.status === 'expired') {
-        setStatus('expired');
-        clearInterval(pollRef.current); clearInterval(timerRef.current);
-      }
-    }, 4000);
-  }, [api, onBalanceChange]);
-
-  useEffect(() => () => { clearInterval(pollRef.current); clearInterval(timerRef.current); }, []);
-
-  const handleBuy = async (pkgId) => {
-    setLoading(pkgId);
-    try {
-      const body = pkgId === 'custom' ? { tokens: parseInt(customQty, 10) } : { package: pkgId };
-      const d = await api('/payments/create', 'POST', body);
-      if (d.error) { alert(d.error); setLoading(null); return; }
-      setPayment(d); setStatus('pending');
-      startPolling(d.id);
-    } catch { alert('Erro ao gerar PIX. Tente novamente.'); }
-    setLoading(null);
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(payment.qrCode);
-    setCopied(true); setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleClose = () => {
-    setPayment(null); setStatus('pending');
-    clearInterval(pollRef.current); clearInterval(timerRef.current);
-  };
-
-  const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-
-  return (
-    <PageWrap>
-      <PageHeader title="comprar tokens" sub="// pagamento via PIX · crédito instantâneo" />
-
-      {/* Cards de pacotes */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 32 }}>
-        {PKGS.map(pkg => (
-          <div key={pkg.id} style={{ background: pkg.highlight ? P.accentDim : P.surface, border: `${pkg.highlight ? 2 : 1}px solid ${pkg.highlight ? P.accent : P.border}`, borderRadius: 6, padding: '28px 24px', textAlign: 'center', position: 'relative' }}>
-            {pkg.badge && (
-              <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: P.accent, color: '#0d1117', fontSize: 10, fontWeight: 700, fontFamily: 'monospace', padding: '3px 10px', borderRadius: 3, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{pkg.badge}</div>
-            )}
-            <div style={{ color: pkg.highlight ? P.accent : P.textMuted, fontFamily: 'monospace', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{pkg.label}</div>
-            <div style={{ color: P.text, fontSize: 40, fontWeight: 800, fontFamily: 'monospace', lineHeight: 1 }}>{pkg.tokens}</div>
-            <div style={{ color: P.textDim, fontSize: 12, fontFamily: 'monospace', marginBottom: 14 }}>tokens</div>
-            <div style={{ color: P.text, fontSize: 24, fontWeight: 700, fontFamily: 'monospace', marginBottom: 2 }}>R$ {pkg.amount},00</div>
-            <div style={{ color: pkg.economy ? P.green : P.textDim, fontSize: 11, fontFamily: 'monospace', marginBottom: pkg.economy ? 8 : 20, minHeight: 16 }}>{pkg.economy || `R$ ${pkg.pricePerToken} / token`}</div>
-            {!pkg.economy && <div style={{ marginBottom: 20 }} />}
-            {pkg.economy && <div style={{ color: P.textDim, fontSize: 11, fontFamily: 'monospace', marginBottom: 20 }}>R$ {pkg.pricePerToken} / token</div>}
-            <Btn primary={pkg.highlight} fullWidth disabled={loading === pkg.id} onClick={() => handleBuy(pkg.id)} style={{ fontSize: 12 }}>
-              {loading === pkg.id ? 'gerando PIX...' : `Pagar R$ ${pkg.amount},00`}
-            </Btn>
-          </div>
-        ))}
-      </div>
-
-      {/* Quantidade personalizada */}
-      <div style={{ background: P.surface, border: `1px solid ${P.border}`, borderRadius: 6, padding: '20px 24px', marginBottom: 32, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{ color: P.textMuted, fontFamily: 'monospace', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', flexShrink: 0 }}>quantidade livre</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
-          <input
-            type="number" min="1" max="9999" placeholder="ex: 3"
-            value={customQty}
-            onChange={e => setCustomQty(e.target.value.replace(/[^0-9]/g, ''))}
-            style={{ width: 80, background: P.bg, border: `1px solid ${P.border}`, borderRadius: 4, color: P.text, fontFamily: 'monospace', fontSize: 14, padding: '8px 10px', outline: 'none', textAlign: 'center' }}
-          />
-          <span style={{ color: P.textDim, fontFamily: 'monospace', fontSize: 12 }}>token{customQty > 1 ? 's' : ''}</span>
-          {customQty > 0 && (
-            <span style={{ color: P.accent, fontFamily: 'monospace', fontSize: 14, fontWeight: 700 }}>
-              = R$ {(parseInt(customQty) * 4).toFixed(2).replace('.', ',')}
-            </span>
-          )}
-        </div>
-        <Btn
-          primary
-          disabled={!customQty || parseInt(customQty) < 1 || loading === 'custom'}
-          onClick={() => handleBuy('custom')}
-          style={{ fontSize: 12, flexShrink: 0 }}
-        >
-          {loading === 'custom' ? 'gerando PIX...' : `Pagar${customQty > 0 ? ` R$ ${(parseInt(customQty) * 4).toFixed(2).replace('.', ',')}` : ''}`}
-        </Btn>
-      </div>
-
-      {/* Histórico */}
-      {history.length > 0 && (
-        <Card>
-          <SectionLabel>histórico de compras</SectionLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {history.map(h => (
-              <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${P.border}` }}>
-                <div style={{ color: P.text, fontSize: 13 }}>+{h.tokens} tokens</div>
-                <div style={{ color: P.textMuted, fontSize: 12, fontFamily: 'monospace' }}>R$ {h.amount},00</div>
-                <div style={{ color: h.status === 'approved' ? P.green : h.status === 'expired' ? P.red : P.yellow, fontSize: 11, fontFamily: 'monospace' }}>{h.status}</div>
-                <div style={{ color: P.textDim, fontSize: 10, fontFamily: 'monospace' }}>{h.created_at?.slice(0,10)}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Modal PIX */}
-      {payment && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: P.surface, border: `1px solid ${P.border}`, borderRadius: 6, padding: 28, width: '100%', maxWidth: 400, textAlign: 'center' }}>
-            {status === 'approved' ? (
-              <>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
-                <div style={{ color: P.green, fontSize: 18, fontWeight: 700, fontFamily: 'monospace', marginBottom: 8 }}>Pagamento confirmado!</div>
-                <div style={{ color: P.textMuted, fontSize: 13, marginBottom: 24 }}>+{payment.tokens} tokens adicionados ao seu saldo.</div>
-                <Btn primary fullWidth onClick={handleClose}>fechar</Btn>
-              </>
-            ) : status === 'expired' ? (
-              <>
-                <div style={{ color: P.red, fontSize: 16, fontWeight: 700, fontFamily: 'monospace', marginBottom: 8 }}>PIX expirado</div>
-                <div style={{ color: P.textMuted, fontSize: 13, marginBottom: 24 }}>O tempo limite de 30 minutos passou. Tente novamente.</div>
-                <Btn fullWidth onClick={handleClose}>fechar</Btn>
-              </>
-            ) : (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <div style={{ color: P.text, fontSize: 14, fontWeight: 700, fontFamily: 'monospace' }}>Pague via PIX</div>
-                  <span style={{ color: timeLeft < 120 ? P.red : P.textMuted, fontFamily: 'monospace', fontSize: 13 }}>⏱ {fmt(timeLeft)}</span>
-                </div>
-                <div style={{ color: P.textMuted, fontSize: 12, marginBottom: 16 }}>
-                  R$ {payment.amount},00 · +{payment.tokens} tokens BVT
-                </div>
-                {payment.qrCodeBase64 && (
-                  <img src={`data:image/png;base64,${payment.qrCodeBase64}`} alt="QR Code PIX" style={{ width: 200, height: 200, margin: '0 auto 16px', display: 'block', borderRadius: 6 }} />
-                )}
-                <div style={{ background: P.surface2, border: `1px solid ${P.border}`, borderRadius: 4, padding: '10px 12px', marginBottom: 12, fontFamily: 'monospace', fontSize: 10, color: P.textMuted, wordBreak: 'break-all', textAlign: 'left', maxHeight: 80, overflow: 'hidden' }}>
-                  {payment.qrCode?.slice(0, 120)}...
-                </div>
-                <Btn primary fullWidth onClick={handleCopy} style={{ marginBottom: 8 }}>
-                  {copied ? '✓ copiado!' : '⎘ copiar código PIX'}
-                </Btn>
-                <button style={{ background: 'transparent', border: 'none', color: P.textDim, cursor: 'pointer', fontSize: 11, fontFamily: 'monospace' }} onClick={handleClose}>cancelar</button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </PageWrap>
-  );
-}
-
 // ── Admin ─────────────────────────────────────────────────────────
 function AdminPage({ api }) {
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newUser, setNewUser] = useState({ username: '', password: '', nome: '', email: '', telefone: '', role: 'client' });
-  const [credits, setCredits] = useState({});
   const [editUser, setEditUser] = useState(null);
   const [toast, setToast] = useState('');
 
@@ -873,33 +555,6 @@ function AdminPage({ api }) {
     setNewUser({ username: '', password: '', nome: '', email: '', telefone: '', role: 'client' });
     setShowCreate(false);
     load();
-  };
-
-  const [creditForm, setCreditForm] = useState({ userId: '', amount: '', description: '' });
-  const [creditLoading, setCreditLoading] = useState(false);
-
-  const handleCredits = async (userId, username) => {
-    const amt = Number(credits[userId] || 0);
-    if (!amt) return;
-    const d = await api(`/admin/users/${userId}/credits`, 'POST', { amount: amt, description: 'Ajuste pelo admin' });
-    if (d.ok) { notify(`${amt > 0 ? '+' : ''}${amt} BVT → ${username}`); setCredits(p => ({ ...p, [userId]: '' })); load(); }
-    else notify('Erro: ' + d.error, false);
-  };
-
-  const handleCreditForm = async (sign) => {
-    const amt = parseInt(creditForm.amount, 10);
-    if (!creditForm.userId || !amt || amt < 1) return;
-    setCreditLoading(true);
-    const u = users.find(x => x.id === creditForm.userId);
-    const finalAmt = sign === '-' ? -amt : amt;
-    const desc = creditForm.description || (sign === '+' ? 'Crédito manual pelo admin' : 'Débito manual pelo admin');
-    const d = await api(`/admin/users/${creditForm.userId}/credits`, 'POST', { amount: finalAmt, description: desc });
-    if (d.ok) {
-      notify(`${sign === '+' ? '+' : '-'}${amt} BVT → ${u?.nome || u?.username} (saldo: ${d.newBalance})`);
-      setCreditForm(p => ({ ...p, amount: '', description: '' }));
-      load();
-    } else notify('Erro: ' + d.error, false);
-    setCreditLoading(false);
   };
 
   const handleDelete = async (userId, username) => {
@@ -932,11 +587,9 @@ function AdminPage({ api }) {
 
       {/* Stats */}
       {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 20 }}>
           {[
             { num: stats.users?.total || 0, lbl: 'usuários' },
-            { num: stats.users?.totalBVT || 0, lbl: 'BVT em saldo' },
-            { num: stats.bvtUsado || 0, lbl: 'BVT consumidos' },
             { num: stats.sites?.total || 0, lbl: 'sites live' },
           ].map((s, i) => (
             <div key={i} style={{ background: P.surface, border: `1px solid ${P.border}`, borderRadius: 4, padding: '14px 16px', textAlign: 'center' }}>
@@ -974,42 +627,6 @@ function AdminPage({ api }) {
         </Card>
       )}
 
-      {/* Gerenciar Créditos */}
-      <Card style={{ marginBottom: 16 }}>
-        <SectionLabel>gerenciar créditos</SectionLabel>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 180px', minWidth: 160 }}>
-            <label style={S.lbl}>cliente</label>
-            <select style={S.inp} value={creditForm.userId} onChange={e => setCreditForm(p => ({ ...p, userId: e.target.value }))}>
-              <option value="">selecionar...</option>
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.nome || u.username} (@{u.username}) — {u.balance} BVT</option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', flex: '0 0 90px' }}>
-            <label style={S.lbl}>quantidade</label>
-            <input style={S.inp} type="number" min="1" placeholder="ex: 5" value={creditForm.amount} onChange={e => setCreditForm(p => ({ ...p, amount: e.target.value.replace(/[^0-9]/g, '') }))} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 160px' }}>
-            <label style={S.lbl}>descrição (opcional)</label>
-            <input style={S.inp} placeholder="ex: bônus, reembolso..." value={creditForm.description} onChange={e => setCreditForm(p => ({ ...p, description: e.target.value }))} />
-          </div>
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <Btn primary disabled={!creditForm.userId || !creditForm.amount || creditLoading} onClick={() => handleCreditForm('+')}>
-              + adicionar
-            </Btn>
-            <button
-              disabled={!creditForm.userId || !creditForm.amount || creditLoading}
-              onClick={() => handleCreditForm('-')}
-              style={{ background: 'transparent', border: `1px solid ${P.red}`, color: P.red, borderRadius: 4, padding: '8px 14px', fontSize: 12, fontFamily: 'monospace', cursor: 'pointer', opacity: (!creditForm.userId || !creditForm.amount || creditLoading) ? 0.4 : 1 }}
-            >
-              − remover
-            </button>
-          </div>
-        </div>
-      </Card>
-
       {/* Tabela de usuários */}
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '12px 16px', borderBottom: `1px solid ${P.border}`, display: 'grid', gridTemplateColumns: '1fr 120px 160px 70px 180px', gap: 8 }}>
@@ -1032,14 +649,8 @@ function AdminPage({ api }) {
             <div style={{ color: u.role === 'admin' ? P.yellow : P.textMuted, fontSize: 11, fontFamily: 'monospace' }}>{u.role}</div>
             {/* ações */}
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              <input
-                style={{ ...S.inp, width: 44, padding: '4px 6px', fontSize: 11, fontFamily: 'monospace', textAlign: 'center' }}
-                type="number" placeholder="±" value={credits[u.id] || ''}
-                onChange={e => setCredits(p => ({...p, [u.id]: e.target.value}))}
-              />
-              <button style={{ ...S.smBtn, color: P.accent, border: `1px solid ${P.accentDim}`, cursor: 'pointer', fontSize: 10 }} onClick={() => handleCredits(u.id, u.nome || u.username)}>ok</button>
               <button style={{ ...S.smBtn, color: P.textMuted, border: `1px solid ${P.border}`, cursor: 'pointer', fontSize: 10 }} onClick={() => setEditUser({...u})}>✎</button>
-              <button style={{ ...S.smBtn, color: P.red, border: `1px solid ${P.redDim}`, cursor: 'pointer', fontSize: 10, marginLeft: 'auto' }} onClick={() => handleDelete(u.id, u.username)}>✕ remover</button>
+              <button style={{ ...S.smBtn, color: P.red, border: `1px solid ${P.redDim}`, cursor: 'pointer', fontSize: 10 }} onClick={() => handleDelete(u.id, u.username)}>✕ remover</button>
             </div>
           </div>
         ))}
@@ -1079,88 +690,46 @@ function AdminPage({ api }) {
   );
 }
 
-// ── Modal Auth (login / cadastro) ────────────────────────────────
-function AuthModal({ onLogin, onClose, initialTab = 'login' }) {
-  const [tab, setTab] = useState(initialTab);
-  const [form, setForm] = useState({ username: '', password: '', nome: '', confirmPassword: '' });
+// ── Modal Auth (login) ────────────────────────────────────────────
+function AuthModal({ onLogin, onClose }) {
+  const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const f = k => v => { setForm(p => ({...p, [k]: v})); setError(''); };
 
-  const switchTab = (t) => { setTab(t); setError(''); setForm({ username: '', password: '', nome: '', confirmPassword: '' }); };
-
   const submit = async (e) => {
     e.preventDefault(); setError(''); setLoading(true);
     try {
-      if (tab === 'register' && form.password !== form.confirmPassword) {
-        setError('As senhas não coincidem'); setLoading(false); return;
-      }
-      const endpoint = tab === 'login' ? '/auth/login' : '/auth/register';
-      const body = tab === 'login'
-        ? { username: form.username, password: form.password }
-        : { username: form.username, password: form.password, nome: form.nome };
-      const r = await fetch(`${API}${endpoint}`, {
+      const r = await fetch(`${API}/auth/login`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(form),
       });
       const d = await r.json();
       if (d.token) { saveAuth(d); onLogin(d); }
-      else setError(d.error || (tab === 'login' ? 'Usuário ou senha inválidos' : 'Erro ao criar conta'));
+      else setError(d.error || 'Usuário ou senha inválidos');
     } catch { setError('Erro de conexão'); }
     finally { setLoading(false); }
   };
-
-  const tabStyle = (t) => ({
-    flex: 1, background: 'transparent', border: 'none',
-    borderBottom: `2px solid ${tab === t ? P.accent : P.border}`,
-    color: tab === t ? P.accent : P.textMuted,
-    padding: '10px 0', cursor: 'pointer',
-    fontFamily: 'monospace', fontSize: 12, fontWeight: tab === t ? 700 : 400,
-  });
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{ background: P.surface, border: `1px solid ${P.border}`, borderRadius: 6, width: '100%', maxWidth: 360, overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <BvtLogo size={20} />
             <span style={{ color: P.textMuted, fontFamily: 'monospace', fontSize: 11 }}>Painel BVT</span>
           </div>
           <button style={{ background: 'transparent', border: 'none', color: P.textDim, cursor: 'pointer', fontSize: 20, lineHeight: 1 }} onClick={onClose}>×</button>
         </div>
-        {/* Tabs */}
-        <div style={{ display: 'flex', margin: '12px 20px 0', borderBottom: `1px solid ${P.border}` }}>
-          <button style={tabStyle('login')} onClick={() => switchTab('login')}>entrar</button>
-          <button style={tabStyle('register')} onClick={() => switchTab('register')}>criar conta</button>
-        </div>
-        {/* Form */}
-        <form onSubmit={submit} style={{ padding: '20px 20px 24px' }}>
-          {tab === 'register' && (
-            <Field label="nome" value={form.nome} onChange={f('nome')} placeholder="Seu nome" autoFocus />
-          )}
-          <Field label="usuário *" value={form.username} onChange={f('username')} placeholder="min. 3 caracteres, sem espaço" autoFocus={tab === 'login'} required />
-          <Field label="senha *" type="password" value={form.password} onChange={f('password')} placeholder={tab === 'register' ? 'mínimo 6 caracteres' : ''} required />
-          {tab === 'register' && (
-            <Field label="confirmar senha *" type="password" value={form.confirmPassword} onChange={f('confirmPassword')} required />
-          )}
+        <form onSubmit={submit} style={{ padding: '0 20px 24px' }}>
+          <Field label="usuário" value={form.username} onChange={f('username')} autoFocus required />
+          <Field label="senha" type="password" value={form.password} onChange={f('password')} required />
           {error && <ErrBox>{error}</ErrBox>}
           <Btn type="submit" primary fullWidth disabled={loading} style={{ marginTop: 4 }}>
-            {loading ? (tab === 'login' ? 'entrando...' : 'criando conta...') : (tab === 'login' ? '→ entrar' : '→ criar conta')}
+            {loading ? 'entrando...' : '→ entrar'}
           </Btn>
-          {tab === 'register' && (
-            <a href="https://discord.gg/mkJE89mBUj" target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 14, background: '#5865F2' + '22', border: '1px solid #5865F2', borderRadius: 6, padding: '10px 16px', textDecoration: 'none' }}>
-              <span style={{ fontSize: 16 }}>💬</span>
-              <span style={{ color: '#8b9cf7', fontSize: 11, fontFamily: 'monospace' }}>Entre no Discord da comunidade</span>
-            </a>
-          )}
-          <div style={{ textAlign: 'center', marginTop: 14, color: P.textDim, fontSize: 11, fontFamily: 'monospace' }}>
-            {tab === 'login'
-              ? <>não tem conta? <button type="button" style={{ background: 'transparent', border: 'none', color: P.accent, cursor: 'pointer', fontSize: 11, fontFamily: 'monospace', padding: 0 }} onClick={() => switchTab('register')}>criar agora</button></>
-              : <>já tem conta? <button type="button" style={{ background: 'transparent', border: 'none', color: P.accent, cursor: 'pointer', fontSize: 11, fontFamily: 'monospace', padding: 0 }} onClick={() => switchTab('login')}>entrar</button></>
-            }
-          </div>
         </form>
       </div>
     </div>
@@ -1209,15 +778,12 @@ export default function App() {
             <BvtLogo size={24} />
             <span style={{ color: P.text, fontWeight: 700, fontFamily: 'monospace', fontSize: 14 }}>Painel BVT</span>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setAuthModal('login')} style={{ fontSize: 12, padding: '7px 18px' }}>Entrar</Btn>
-            <Btn primary onClick={() => setAuthModal('register')} style={{ fontSize: 12, padding: '7px 18px' }}>Criar conta →</Btn>
-          </div>
+          <Btn primary onClick={() => setAuthModal('login')} style={{ fontSize: 12, padding: '7px 18px' }}>Entrar →</Btn>
         </div>
 
-        <HomePage onStart={() => setAuthModal('register')} />
+        <HomePage onStart={() => setAuthModal('login')} />
 
-        {authModal && <AuthModal onLogin={handleLogin} onClose={() => setAuthModal(null)} initialTab={authModal} />}
+        {authModal && <AuthModal onLogin={handleLogin} onClose={() => setAuthModal(null)} />}
       </div>
     );
   }
@@ -1468,12 +1034,6 @@ function Btn({ children, onClick, type = 'button', primary, disabled, fullWidth,
       opacity: disabled ? 0.5 : 1,
       ...style,
     }}>{children}</button>
-  );
-}
-
-function Spinner() {
-  return (
-    <div style={{ width: 32, height: 32, border: `2px solid ${P.border}`, borderTop: `2px solid ${P.accent}`, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
   );
 }
 

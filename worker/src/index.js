@@ -1,5 +1,4 @@
 import { generateHTML } from './template.js';
-import { generateCnpjPdf } from './pdf-generator.js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -288,23 +287,7 @@ async function handleRequest(request, env, ctx) {
   }
 
   if (method === 'POST' && path === '/api/auth/register') {
-    const { username, password, nome } = await request.json();
-    if (!username || !password) return json({ error: 'username e password obrigatórios' }, 400);
-    if (username.length < 3) return json({ error: 'username precisa ter pelo menos 3 caracteres' }, 400);
-    if (password.length < 6) return json({ error: 'senha precisa ter pelo menos 6 caracteres' }, 400);
-    if (!/^[a-z0-9_]+$/i.test(username)) return json({ error: 'username só pode ter letras, números e _' }, 400);
-    const existing = await env.DB.prepare('SELECT id FROM users WHERE username=?').bind(username).first();
-    if (existing) return json({ error: 'Username já está em uso' }, 409);
-    const salt = randomId();
-    const hash = await hashPassword(password, salt);
-    const userId = randomId();
-    await env.DB.prepare(
-      `INSERT INTO users (id, username, password_hash, salt, role, balance, nome, email_addr, telefone) VALUES (?,?,?,?,?,?,?,?,?)`
-    ).bind(userId, username, hash, salt, 'client', 0, nome || '', '', '').run();
-    const token = randomId();
-    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    await env.DB.prepare(`INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?,?)`).bind(token, userId, expires).run();
-    return json({ token, username, role: 'client', nome: nome || '', email: '', telefone: '' });
+    return json({ error: 'Cadastro desativado. Solicite acesso ao administrador.' }, 403);
   }
 
   if (method === 'POST' && path === '/api/auth/logout') {
@@ -356,25 +339,56 @@ async function handleRequest(request, env, ctx) {
       return json(results);
     }
 
-    if (method === 'PATCH' && path.startsWith('/api/admin/users/') && path.endsWith('/role')) {
+    if (method === 'POST' && path === '/api/admin/users') {
+      const { username, password, nome, email, telefone, role } = await request.json();
+      if (!username || !password) return json({ error: 'username e password obrigatórios' }, 400);
+      if (username.length < 3) return json({ error: 'username precisa ter pelo menos 3 caracteres' }, 400);
+      if (password.length < 6) return json({ error: 'senha precisa ter pelo menos 6 caracteres' }, 400);
+      if (!/^[a-z0-9_]+$/i.test(username)) return json({ error: 'username só pode ter letras, números e _' }, 400);
+      const existing = await env.DB.prepare('SELECT id FROM users WHERE username=?').bind(username).first();
+      if (existing) return json({ error: 'Username já está em uso' }, 409);
+      const salt = randomId();
+      const hash = await hashPassword(password, salt);
+      const userId = randomId();
+      await env.DB.prepare(
+        `INSERT INTO users (id, username, password_hash, salt, role, nome, email_addr, telefone) VALUES (?,?,?,?,?,?,?,?)`
+      ).bind(userId, username, hash, salt, role || 'client', nome || '', email || '', telefone || '').run();
+      return json({ ok: true, username, role: role || 'client' }, 201);
+    }
+
+    if (method === 'PATCH' && path.startsWith('/api/admin/users/')) {
       const userId = path.split('/')[4];
-      const { role } = await request.json();
-      if (!['client', 'admin'].includes(role)) return json({ error: 'Role inválido' }, 400);
-      await env.DB.prepare('UPDATE users SET role=? WHERE id=?').bind(role, userId).run();
+      const { nome, email, telefone, role, password } = await request.json();
+      if (role && !['client', 'admin'].includes(role)) return json({ error: 'Role inválido' }, 400);
+      if (password) {
+        const newSalt = randomId();
+        const newHash = await hashPassword(password, newSalt);
+        await env.DB.prepare('UPDATE users SET password_hash=?, salt=? WHERE id=?').bind(newHash, newSalt, userId).run();
+      }
+      await env.DB.prepare('UPDATE users SET nome=?, email_addr=?, telefone=?, role=? WHERE id=?')
+        .bind(nome ?? '', email ?? '', telefone ?? '', role ?? 'client', userId).run();
       return json({ ok: true });
     }
 
     if (method === 'DELETE' && path.startsWith('/api/admin/users/')) {
       const userId = path.split('/')[4];
+      const { results: userSites } = await env.DB.prepare('SELECT repo_name FROM sites WHERE user_id=?').bind(userId).all();
+      for (const site of userSites) {
+        if (site.repo_name) {
+          try { await deleteCFPagesSite(site.repo_name, env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_API_TOKEN); }
+          catch (err) { console.error(`CF Pages delete failed for ${site.repo_name}:`, err.message); }
+        }
+      }
+      await env.DB.prepare('DELETE FROM sites WHERE user_id=?').bind(userId).run();
       await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(userId).run();
       await env.DB.prepare('DELETE FROM users WHERE id=?').bind(userId).run();
       return json({ deleted: true });
     }
 
     if (method === 'GET' && path === '/api/admin/stats') {
-      const { results: users } = await env.DB.prepare('SELECT COUNT(*) as total FROM users').all();
-      const { results: sites } = await env.DB.prepare("SELECT COUNT(*) as total FROM sites WHERE status='live'").all();
-      return json({ users: users[0], sites: sites[0] });
+      const { results: usersStats } = await env.DB.prepare('SELECT COUNT(*) as total FROM users').all();
+      const { results: sitesStats } = await env.DB.prepare("SELECT COUNT(*) as total FROM sites WHERE status='live'").all();
+      return json({ users: usersStats[0], sites: sitesStats[0] });
     }
   }
 
@@ -402,27 +416,6 @@ async function handleRequest(request, env, ctx) {
              parseDnsTxt(body.dns_txt_verification), now).run();
       ctx.waitUntil(processPending(env));
       return json({ siteId, status: 'processing' }, 202);
-    }
-
-    if (method === 'GET' && path.startsWith('/api/sites/') && path.endsWith('/pdf')) {
-      const id = path.split('/')[3];
-      const site = await env.DB.prepare('SELECT * FROM sites WHERE id=? AND user_id=?').bind(id, user.user_id).first();
-      if (!site) return json({ error: 'Not found' }, 404);
-      let cnpjApiData = null;
-      try {
-        const cleanCnpj = site.cnpj.replace(/\D/g, '');
-        const r = await fetch(`https://publica.cnpj.ws/cnpj/${cleanCnpj}`);
-        if (r.ok) cnpjApiData = await r.json();
-      } catch {}
-      const pdfBytes = await generateCnpjPdf(site, cnpjApiData);
-      const slug = site.razao_social.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').substring(0, 40);
-      return new Response(pdfBytes, {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="comprovante-${slug}.pdf"`,
-        },
-      });
     }
 
     if (method === 'GET' && path.startsWith('/api/sites/')) {
