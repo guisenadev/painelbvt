@@ -16,7 +16,7 @@ const json = (data, status = 200) =>
 const randomId = () => crypto.randomUUID();
 
 const toSiteName = (name) =>
-  name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-')
     .replace(/^-|-$/g, '').substring(0, 28);
 
@@ -192,6 +192,24 @@ async function deleteCFPagesSite(projectName, accountId, apiToken) {
   console.log(`CF Pages delete ${projectName}: HTTP ${r.status}`);
 }
 
+// ── Força o Facebookbot a crawlear o site imediatamente ──────────
+async function triggerFacebookScrape(siteUrl, fbVerification) {
+  const urls = [siteUrl];
+  if (fbVerification) urls.push(`${siteUrl}/${fbVerification}`);
+
+  for (const url of urls) {
+    try {
+      const r = await fetch(
+        `https://graph.facebook.com/?id=${encodeURIComponent(url)}&scrape=true`,
+        { method: 'POST', signal: AbortSignal.timeout(15000) }
+      );
+      console.log(`FB scrape ${url}: HTTP ${r.status}`);
+    } catch (err) {
+      console.log(`FB scrape ${url}: falhou (${err.message}) — ignorando`);
+    }
+  }
+}
+
 // ── Cron ────────────────────────────────────────────────────────
 async function processPending(env) {
   console.log('Cron started...');
@@ -214,9 +232,11 @@ async function processPending(env) {
           `UPDATE sites SET repo_name=?, repo_url=?, site_url=?, status='live' WHERE id=?`
         ).bind(siteId, siteUrl, siteUrl, site.id).run();
         console.log('Site live:', siteUrl);
+        await triggerFacebookScrape(siteUrl, site.fb_verification || '');
       } else if (site.status === 'updating' && site.repo_name) {
         await updateCFPagesSite(site.repo_name, html, accountId, apiToken, site.fb_verification || '');
         await env.DB.prepare(`UPDATE sites SET status='live' WHERE id=?`).bind(site.id).run();
+        await triggerFacebookScrape(`https://${site.repo_name}.pages.dev`, site.fb_verification || '');
       } else {
         await env.DB.prepare(`UPDATE sites SET status='error' WHERE id=?`).bind(site.id).run();
       }

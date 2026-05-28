@@ -42,31 +42,54 @@ export const generateHTML = (data) => {
   <meta property="business:contact_data:country_name" content="Brazil">
   ${telefone ? `<meta property="business:contact_data:phone_number" content="+55${num}">` : ''}
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "${displayName.replace(/"/g, '\\"')}",
-    "legalName": "${razao_social.replace(/"/g, '\\"')}",
-    "description": "Empresa brasileira registrada com CNPJ ${cnpj}. Oferecemos serviços com qualidade e comprometimento.",
-    "url": "https://${slug}.pages.dev/",
-    "foundingDate": "${anoFundacao}",
-    "taxID": "${cnpj}",
-    ${foto_url ? `"image": "${foto_url}",` : ''}
-    "address": {
-      "@type": "PostalAddress",
-      "streetAddress": "${endereco || ''}${bairro ? ', ' + bairro : ''}",
-      "addressLocality": "${cidade || ''}",
-      "addressRegion": "${estado || ''}",
-      "postalCode": "${cep || ''}",
-      "addressCountry": "BR"
+  [
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "${displayName.replace(/"/g, '\\"')}",
+      "legalName": "${razao_social.replace(/"/g, '\\"')}",
+      "description": "Empresa brasileira registrada com CNPJ ${cnpj}. Oferecemos serviços com qualidade e comprometimento.",
+      "url": "https://${slug}.pages.dev/",
+      "foundingDate": "${anoFundacao}",
+      "taxID": "${cnpj}",
+      "identifier": [
+        { "@type": "PropertyValue", "name": "CNPJ", "value": "${cnpj}" },
+        { "@type": "PropertyValue", "name": "Razao Social", "value": "${razao_social.replace(/"/g, '\\"')}" }
+      ],
+      ${foto_url ? `"image": "${foto_url}",` : ''}
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "${endereco || ''}${bairro ? ', ' + bairro : ''}",
+        "addressLocality": "${cidade || ''}",
+        "addressRegion": "${estado || ''}",
+        "postalCode": "${cep || ''}",
+        "addressCountry": "BR"
+      },
+      ${telefone ? `"telephone": "+55${num}",` : ''}
+      ${email ? `"email": "${email}",` : ''}
+      "openingHoursSpecification": [
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "08:00", "closes": "18:00" }
+      ],
+      "sameAs": []
     },
-    ${telefone ? `"telephone": "+55${num}",` : ''}
-    ${email ? `"email": "${email}",` : ''}
-    "openingHoursSpecification": [
-      { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "08:00", "closes": "18:00" }
-    ],
-    "sameAs": []
-  }
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "${displayName.replace(/"/g, '\\"')}",
+      "legalName": "${razao_social.replace(/"/g, '\\"')}",
+      "taxID": "${cnpj}",
+      "url": "https://${slug}.pages.dev/",
+      ${foto_url ? `"logo": "${foto_url}",` : ''}
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "${cidade || ''}",
+        "addressRegion": "${estado || ''}",
+        "addressCountry": "BR"
+      },
+      ${telefone ? `"contactPoint": { "@type": "ContactPoint", "telephone": "+55${num}", "contactType": "customer service", "areaServed": "BR", "availableLanguage": "Portuguese" },` : ''}
+      "identifier": { "@type": "PropertyValue", "name": "CNPJ", "value": "${cnpj}" }
+    }
+  ]
   </script>`;
 
   if (variant === 0) return templateNavyBlue({ displayName, razao_social, cnpj, slug, enderecoCompleto, endereco, bairro, cep, num, telFormatted, email, foto_url, waLink, anoFundacao, ano, cidade, estado, metaTags });
@@ -170,6 +193,21 @@ function templateNavyBlue({ displayName, razao_social, cnpj, slug, enderecoCompl
   </style>
 </head>
 <body>
+<div style="display:none" aria-hidden="true" itemscope itemtype="https://schema.org/Organization">
+  <span itemprop="name">${displayName}</span>
+  <span itemprop="legalName">${razao_social}</span>
+  <span itemprop="taxID">${cnpj}</span>
+  <span itemprop="description">Empresa brasileira com CNPJ ${cnpj}, razão social ${razao_social}, sediada em ${cidade || 'Brasil'}${estado ? ', ' + estado : ''}.</span>
+  <span itemprop="address" itemscope itemtype="https://schema.org/PostalAddress">
+    <span itemprop="streetAddress">${endereco || ''}</span>
+    <span itemprop="addressLocality">${cidade || ''}</span>
+    <span itemprop="addressRegion">${estado || ''}</span>
+    <span itemprop="postalCode">${cep || ''}</span>
+    <span itemprop="addressCountry">BR</span>
+  </span>
+  ${num ? `<span itemprop="telephone">+55${num}</span>` : ''}
+  ${email ? `<span itemprop="email">${email}</span>` : ''}
+</div>
 <nav><div class="ni">
   <a href="#" class="logo">${displayName.split(' ')[0]}<span>${displayName.split(' ').slice(1).join(' ') ? ' ' + displayName.split(' ').slice(1).join(' ') : ''}</span></a>
   <ul class="nav-links"><li><a href="#sobre">Sobre</a></li><li><a href="#servicos">Serviços</a></li><li><a href="#empresa">Empresa</a></li><li><a href="#contato">Contato</a></li><li><a href="#privacidade">Privacidade</a></li></ul>
@@ -417,6 +455,21 @@ function templateGreenDark({ displayName, razao_social, cnpj, slug, enderecoComp
   </style>
 </head>
 <body>
+<div style="display:none" aria-hidden="true" itemscope itemtype="https://schema.org/Organization">
+  <span itemprop="name">${displayName}</span>
+  <span itemprop="legalName">${razao_social}</span>
+  <span itemprop="taxID">${cnpj}</span>
+  <span itemprop="description">Empresa brasileira com CNPJ ${cnpj}, razão social ${razao_social}, sediada em ${cidade || 'Brasil'}${estado ? ', ' + estado : ''}.</span>
+  <span itemprop="address" itemscope itemtype="https://schema.org/PostalAddress">
+    <span itemprop="streetAddress">${endereco || ''}</span>
+    <span itemprop="addressLocality">${cidade || ''}</span>
+    <span itemprop="addressRegion">${estado || ''}</span>
+    <span itemprop="postalCode">${cep || ''}</span>
+    <span itemprop="addressCountry">BR</span>
+  </span>
+  ${num ? `<span itemprop="telephone">+55${num}</span>` : ''}
+  ${email ? `<span itemprop="email">${email}</span>` : ''}
+</div>
 <header><div class="hi">
   <a href="#" class="logo">${displayName.split(' ')[0]}<em>${displayName.split(' ').slice(1).join(' ') ? ' ' + displayName.split(' ').slice(1).join(' ') : ''}</em></a>
   <ul class="hnav"><li><a href="#sobre">Sobre</a></li><li><a href="#servicos">Serviços</a></li><li><a href="#empresa">Empresa</a></li><li><a href="#contato">Contato</a></li></ul>
@@ -676,6 +729,21 @@ function templateSlateOrange({ displayName, razao_social, cnpj, slug, enderecoCo
   </style>
 </head>
 <body>
+<div style="display:none" aria-hidden="true" itemscope itemtype="https://schema.org/Organization">
+  <span itemprop="name">${displayName}</span>
+  <span itemprop="legalName">${razao_social}</span>
+  <span itemprop="taxID">${cnpj}</span>
+  <span itemprop="description">Empresa brasileira com CNPJ ${cnpj}, razão social ${razao_social}, sediada em ${cidade || 'Brasil'}${estado ? ', ' + estado : ''}.</span>
+  <span itemprop="address" itemscope itemtype="https://schema.org/PostalAddress">
+    <span itemprop="streetAddress">${endereco || ''}</span>
+    <span itemprop="addressLocality">${cidade || ''}</span>
+    <span itemprop="addressRegion">${estado || ''}</span>
+    <span itemprop="postalCode">${cep || ''}</span>
+    <span itemprop="addressCountry">BR</span>
+  </span>
+  ${num ? `<span itemprop="telephone">+55${num}</span>` : ''}
+  ${email ? `<span itemprop="email">${email}</span>` : ''}
+</div>
 <nav><div class="ni">
   <a href="#" class="logo">${displayName.split(' ')[0]}<span>${displayName.split(' ').slice(1).join(' ') ? ' ' + displayName.split(' ').slice(1).join(' ') : ''}</span></a>
   <ul class="hnav"><li><a href="#sobre">Sobre</a></li><li><a href="#servicos">Serviços</a></li><li><a href="#empresa">Empresa</a></li><li><a href="#contato">Contato</a></li></ul>

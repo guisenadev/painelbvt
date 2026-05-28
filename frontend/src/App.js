@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 const API = 'https://site-factory-worker.viraloficial9.workers.dev/api';
 
+const MAINTENANCE = false;
 
 // ── Palette ──────────────────────────────────────────────────────
 const P = {
@@ -51,6 +52,25 @@ const saveAuth = (data) => {
 const clearAuth = () => {
   ['bvt_token','bvt_user','bvt_role','bvt_balance','bvt_nome','bvt_email','bvt_telefone'].forEach(k => localStorage.removeItem(k));
 };
+
+// ── Maintenance ──────────────────────────────────────────────────
+function MaintenancePage() {
+  return (
+    <div style={{ minHeight: '100vh', background: '#0d1117', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, -apple-system, sans-serif', padding: 24 }}>
+      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 16, padding: '48px 40px', maxWidth: 420, width: '100%', textAlign: 'center' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔧</div>
+        <div style={{ color: '#e6edf3', fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Sistema em Atualização</div>
+        <div style={{ color: '#8b949e', fontSize: 14, lineHeight: 1.6 }}>
+          Estamos realizando melhorias no painel.<br />
+          Voltamos em breve!
+        </div>
+        <div style={{ marginTop: 28, padding: '10px 20px', background: '#1f3a5f', border: '1px solid #58a6ff', borderRadius: 8, color: '#58a6ff', fontSize: 12, fontFamily: 'monospace' }}>
+          Painel BVT — em manutenção
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── SVG Logo ─────────────────────────────────────────────────────
 function BvtLogo({ size = 32 }) {
@@ -969,13 +989,13 @@ function AdminPage({ api }) {
 
       {/* Tabela de usuários */}
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${P.border}`, display: 'grid', gridTemplateColumns: '1fr 120px 130px 80px 80px 80px 100px', gap: 8 }}>
-          {['cliente','telefone','e-mail','saldo','gasto','perfil','ações'].map(h => (
+        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${P.border}`, display: 'grid', gridTemplateColumns: '1fr 120px 160px 70px 180px', gap: 8 }}>
+          {['cliente','telefone','e-mail','perfil','ações'].map(h => (
             <div key={h} style={{ color: P.textDim, fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{h}</div>
           ))}
         </div>
         {users.map((u, i) => (
-          <div key={u.id} style={{ padding: '12px 16px', borderBottom: i < users.length - 1 ? `1px solid ${P.border}` : 'none', display: 'grid', gridTemplateColumns: '1fr 120px 130px 80px 80px 80px 100px', gap: 8, alignItems: 'center', background: i % 2 === 0 ? 'transparent' : P.surface2 }}>
+          <div key={u.id} style={{ padding: '12px 16px', borderBottom: i < users.length - 1 ? `1px solid ${P.border}` : 'none', display: 'grid', gridTemplateColumns: '1fr 120px 160px 70px 180px', gap: 8, alignItems: 'center', background: i % 2 === 0 ? 'transparent' : P.surface2 }}>
             {/* cliente */}
             <div>
               <div style={{ color: P.text, fontSize: 13, fontWeight: 600 }}>{u.nome || u.username}</div>
@@ -985,10 +1005,6 @@ function AdminPage({ api }) {
             <div style={{ color: P.textMuted, fontSize: 12, fontFamily: 'monospace' }}>{u.telefone || '—'}</div>
             {/* email */}
             <div style={{ color: P.textMuted, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email_addr || '—'}</div>
-            {/* saldo */}
-            <div style={{ color: u.balance > 0 ? P.accent : P.textDim, fontSize: 13, fontFamily: 'monospace', fontWeight: 700 }}>{u.balance || 0}</div>
-            {/* gasto */}
-            <div style={{ color: u.total_spent > 0 ? P.text : P.textDim, fontSize: 13, fontFamily: 'monospace' }}>{u.total_spent || 0}</div>
             {/* perfil */}
             <div style={{ color: u.role === 'admin' ? P.yellow : P.textMuted, fontSize: 11, fontFamily: 'monospace' }}>{u.role}</div>
             {/* ações */}
@@ -1000,7 +1016,7 @@ function AdminPage({ api }) {
               />
               <button style={{ ...S.smBtn, color: P.accent, border: `1px solid ${P.accentDim}`, cursor: 'pointer', fontSize: 10 }} onClick={() => handleCredits(u.id, u.nome || u.username)}>ok</button>
               <button style={{ ...S.smBtn, color: P.textMuted, border: `1px solid ${P.border}`, cursor: 'pointer', fontSize: 10 }} onClick={() => setEditUser({...u})}>✎</button>
-              <button style={{ ...S.smBtn, color: P.red, border: `1px solid ${P.redDim}`, cursor: 'pointer', fontSize: 10 }} onClick={() => handleDelete(u.id, u.username)}>✕</button>
+              <button style={{ ...S.smBtn, color: P.red, border: `1px solid ${P.redDim}`, cursor: 'pointer', fontSize: 10, marginLeft: 'auto' }} onClick={() => handleDelete(u.id, u.username)}>✕ remover</button>
             </div>
           </div>
         ))}
@@ -1143,8 +1159,10 @@ export default function App() {
     };
   });
   const [page, setPage] = useState('home');
-  const [authModal, setAuthModal] = useState(null); // null | 'login' | 'register'
+  const [authModal, setAuthModal] = useState(null);
   const api = useApi();
+
+  if (MAINTENANCE) return <MaintenancePage />;
 
   const handleLogin = (d) => {
     saveAuth(d);
