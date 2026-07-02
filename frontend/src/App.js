@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
-const API = 'https://site-factory-worker.viraloficial9.workers.dev/api';
+const API = 'https://site-factory-worker.oficialbrasil.workers.dev/api';
 
 const MAINTENANCE = false;
 
@@ -256,14 +256,17 @@ const STATUS_CFG = {
   error:      { label: 'erro',         color: P.red,    bg: P.redDim,    border: P.red },
 };
 
-function VerificarPage({ api }) {
+function VerificarPage({ api, auth }) {
+  const isAdmin = auth?.role === 'admin';
   const [showForm, setShowForm] = useState(false);
   const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ razao_social:'', cnpj:'', endereco:'', bairro:'', cidade:'', estado:'', cep:'', telefone:'', email:'', nome_topo:'', foto_url:'', fb_verification:'', dns_txt_verification:'' });
+  const [form, setForm] = useState({ razao_social:'', cnpj:'', endereco:'', bairro:'', cidade:'', estado:'', cep:'', telefone:'', email:'', nome_topo:'', foto_url:'', fb_verification:'', dns_txt_verification:'', domain:'', atividade_principal:'', data_abertura:'', descricao:'' });
   const [error, setError] = useState('');
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [sites, setSites] = useState([]);
+  const [search, setSearch] = useState('');
+  const [domains, setDomains] = useState([]);
   const sitesRef = useRef(null);
 
   const loadSites = useCallback(async () => {
@@ -275,6 +278,10 @@ function VerificarPage({ api }) {
     sitesRef.current = setInterval(loadSites, 6000);
     return () => clearInterval(sitesRef.current);
   }, [loadSites]);
+
+  useEffect(() => {
+    api('/domains').then(d => { if (Array.isArray(d)) setDomains(d); });
+  }, [api]);
 
   const fetchCNPJ = async (raw) => {
     const digits = raw.replace(/\D/g, '');
@@ -293,12 +300,14 @@ function VerificarPage({ api }) {
         endereco: logradouro || p.endereco, bairro: end.bairro || p.bairro,
         cidade: end.cidade?.nome || p.cidade, estado: end.estado?.sigla || p.estado,
         cep: end.cep ? end.cep.replace(/(\d{5})(\d{3})/, '$1-$2') : p.cep,
+        atividade_principal: end.atividade_principal?.descricao || p.atividade_principal,
+        data_abertura: end.data_inicio_atividade || p.data_abertura,
       }));
     } catch {}
     finally { setCnpjLoading(false); }
   };
 
-  const resetForm = () => setForm({ razao_social:'', cnpj:'', endereco:'', bairro:'', cidade:'', estado:'', cep:'', telefone:'', email:'', nome_topo:'', foto_url:'', fb_verification:'', dns_txt_verification:'' });
+  const resetForm = () => setForm({ razao_social:'', cnpj:'', endereco:'', bairro:'', cidade:'', estado:'', cep:'', telefone:'', email:'', nome_topo:'', foto_url:'', fb_verification:'', dns_txt_verification:'', domain:'', atividade_principal:'', data_abertura:'', descricao:'' });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -321,12 +330,24 @@ function VerificarPage({ api }) {
 
   const handleEdit = (site) => {
     setEditingId(site.id);
-    setForm({ razao_social: site.razao_social||'', cnpj: site.cnpj||'', endereco: site.endereco||'', bairro: site.bairro||'', cidade: site.cidade||'', estado: site.estado||'', cep: site.cep||'', telefone: site.telefone||'', email: site.email||'', nome_topo: site.nome_topo||'', foto_url: site.foto_url||'', fb_verification: site.fb_verification||'', dns_txt_verification: site.dns_txt_verification||'' });
+    setForm({ razao_social: site.razao_social||'', cnpj: site.cnpj||'', endereco: site.endereco||'', bairro: site.bairro||'', cidade: site.cidade||'', estado: site.estado||'', cep: site.cep||'', telefone: site.telefone||'', email: site.email||'', nome_topo: site.nome_topo||'', foto_url: site.foto_url||'', fb_verification: site.fb_verification||'', dns_txt_verification: site.dns_txt_verification||'', domain: site.domain||'', atividade_principal: site.atividade_principal||'', data_abertura: site.data_abertura||'', descricao: site.descricao||'' });
     setShowForm(true);
     window.scrollTo(0, 0);
   };
 
   const f = k => v => setForm(p => ({ ...p, [k]: v }));
+
+  const q = search.toLowerCase().trim();
+  const qDigits = q.replace(/\D/g, '');
+  const norm = s => (s||'').toLowerCase().replace(/[áàãâä]/g,'a').replace(/[éèêë]/g,'e').replace(/[íìîï]/g,'i').replace(/[óòõôö]/g,'o').replace(/[úùûü]/g,'u').replace(/ç/g,'c').replace(/ñ/g,'n');
+  const qn = norm(q);
+  const filteredSites = q ? sites.filter(s =>
+    norm(s.nome_topo).includes(qn) ||
+    norm(s.razao_social).includes(qn) ||
+    (qDigits ? (s.cnpj || '').replace(/\D/g, '').includes(qDigits) : false) ||
+    norm(s.cidade).includes(qn) ||
+    norm(s.owner_username).includes(qn)
+  ) : sites;
 
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Deletar "${name}"?`)) return;
@@ -340,7 +361,7 @@ function VerificarPage({ api }) {
       {/* Header com botão criar site */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
-          <h1 style={{ color: P.text, fontSize: 16, fontWeight: 700, fontFamily: 'monospace', margin: 0 }}>meus sites</h1>
+          <h1 style={{ color: P.text, fontSize: 16, fontWeight: 700, fontFamily: 'monospace', margin: 0 }}>{isAdmin ? 'todos os sites' : 'meus sites'}</h1>
           <div style={{ color: P.textMuted, fontSize: 11, fontFamily: 'monospace', marginTop: 3 }}>
             {sites.length} site{sites.length !== 1 ? 's' : ''} criado{sites.length !== 1 ? 's' : ''}
           </div>
@@ -353,6 +374,29 @@ function VerificarPage({ api }) {
       {/* Formulário (colapsável) */}
       {showForm && (
         <Card style={{ marginBottom: 20 }}>
+          {/* Seletor de domínio */}
+          {domains.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ color: P.textDim, fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>domínio do site</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {domains.map(d => {
+                  const active = (form.domain || domains[0]) === d;
+                  return (
+                    <button key={d} onClick={() => f('domain')(d)} style={{
+                      background: active ? P.accent : P.surface2,
+                      color: active ? '#0d1117' : P.textMuted,
+                      border: `1px solid ${active ? P.accent : P.border}`,
+                      borderRadius: 4, padding: '6px 14px',
+                      fontSize: 12, fontFamily: 'monospace',
+                      cursor: 'pointer', fontWeight: active ? 700 : 400,
+                    }}>
+                      {d}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {editingId && (
             <div style={{ background: P.accentDim, border: `1px solid ${P.accent}`, borderRadius: 4, padding: '8px 12px', color: P.accent, fontSize: 12, fontFamily: 'monospace', marginBottom: 14 }}>
               // editando site existente
@@ -375,6 +419,13 @@ function VerificarPage({ api }) {
               <Field label="telefone" value={form.telefone} onChange={f('telefone')} placeholder="11999999999" />
               <Field label="e-mail" type="email" value={form.email} onChange={f('email')} />
             </Grid2>
+            {form.atividade_principal && (
+              <div style={{ color: P.textDim, fontSize: 11, fontFamily: 'monospace', marginTop: -6, marginBottom: 14 }}>
+                // atividade principal (Receita Federal): {form.atividade_principal}{form.data_abertura ? ` · aberta em ${form.data_abertura.split('-').reverse().join('/')}` : ''}
+              </div>
+            )}
+            <TextAreaField label="sobre o negócio (opcional, mas recomendado)" value={form.descricao} onChange={f('descricao')}
+              placeholder="Descreva em 2-3 frases o que esse cliente realmente faz. Esse texto substitui o conteúdo genérico do site pelo real — evite copiar o mesmo texto entre clientes diferentes." maxLength={600} />
 
             <Divider />
             <div style={{ marginBottom: 6, fontSize: 11, color: P.textMuted, fontFamily: 'monospace' }}>// verificação de domínio do facebook</div>
@@ -416,14 +467,32 @@ function VerificarPage({ api }) {
         </Card>
       )}
 
+      {/* Barra de pesquisa */}
+      {sites.length > 0 && (
+        <div style={{ position: 'relative', marginBottom: 16 }}>
+          <input
+            style={{ ...S.inp, paddingRight: 80 }}
+            placeholder={isAdmin ? 'pesquisar por nome, CNPJ, cidade ou usuário...' : 'pesquisar por nome, CNPJ ou cidade...'}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            autoComplete="off"
+          />
+          {search && (
+            <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: P.textDim, fontSize: 11, fontFamily: 'monospace', pointerEvents: 'none' }}>
+              {filteredSites.length}/{sites.length}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Cards dos sites */}
-      {sites.length === 0 ? (
+      {filteredSites.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: P.textDim, fontFamily: 'monospace', fontSize: 13 }}>
-          // nenhum site criado ainda — clique em "+ criar site" para começar
+          {q ? `// nenhum site encontrado para "${search}"` : '// nenhum site criado ainda — clique em "+ criar site" para começar'}
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-          {sites.map(s => {
+          {filteredSites.map(s => {
             const st = STATUS_CFG[s.status] || STATUS_CFG.error;
             return (
               <div key={s.id} style={{ background: P.surface, border: `1px solid ${P.border}`, borderRadius: 6, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -436,7 +505,10 @@ function VerificarPage({ api }) {
                     <button style={{ background: 'transparent', border: 'none', color: P.textDim, cursor: 'pointer', fontSize: 12, padding: '0 4px' }} title="deletar" onClick={() => handleDelete(s.id, s.razao_social)}>✕</button>
                   </div>
                 </div>
-<div style={{ color: P.text, fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>{s.nome_topo || s.razao_social}</div>
+                <div style={{ color: P.text, fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>{s.nome_topo || s.razao_social}</div>
+                {isAdmin && s.owner_username && (
+                  <div style={{ color: P.accent, fontSize: 10, fontFamily: 'monospace', background: P.accentDim, border: `1px solid ${P.accent}`, borderRadius: 3, padding: '1px 6px', display: 'inline-block' }}>@{s.owner_username}</div>
+                )}
                 <div style={{ color: P.textMuted, fontSize: 11, fontFamily: 'monospace' }}>{s.cnpj}</div>
                 {s.cidade && <div style={{ color: P.textDim, fontSize: 11 }}>{s.cidade} / {s.estado}</div>}
                 {s.site_url ? (
@@ -795,6 +867,7 @@ export default function App() {
   const navItems = [
     { id: 'home',      label: 'início',       icon: '⌂' },
     { id: 'sites',     label: 'meus sites',   icon: '◈' },
+    { id: 'emails',    label: 'emails temp',  icon: '✉' },
     { id: 'disparos',  label: 'disparos',     icon: '📲' },
     { id: 'conta',     label: 'minha conta',  icon: '◎' },
     ...(isAdmin ? [{ id: 'admin', label: 'admin', icon: '⬡' }] : []),
@@ -862,7 +935,8 @@ export default function App() {
       {/* Content */}
       <main style={{ flex: 1, overflow: 'auto' }}>
         {page === 'home'    && <HomePage onStart={() => setPage('sites')} />}
-        {page === 'sites'    && <VerificarPage api={api} />}
+        {page === 'sites'    && <VerificarPage api={api} auth={auth} />}
+        {page === 'emails'   && <EmailsPage api={api} />}
         {page === 'disparos' && <DisparosPage />}
         {page === 'conta'     && <ContaPage api={api} auth={auth} onUpdate={updated => {
           setAuth(updated);
@@ -873,6 +947,288 @@ export default function App() {
         {page === 'admin'     && isAdmin && <AdminPage api={api} />}
       </main>
     </div>
+  );
+}
+
+// ── Emails Temporários ────────────────────────────────────────────
+function EmailsPage({ api }) {
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddr, setSelectedAddr] = useState(null);
+  const [emails, setEmails] = useState([]);
+  const [selectedEmail, setSelectedEmail] = useState(null);
+  const [showGenForm, setShowGenForm] = useState(false);
+  const [genPrefix, setGenPrefix] = useState('');
+  const [genDomain, setGenDomain] = useState('');
+  const [availDomains, setAvailDomains] = useState([]);
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState('');
+  const [loadingEmails, setLoadingEmails] = useState(false);
+  const [copiedAddr, setCopiedAddr] = useState(null);
+  const pollRef = useRef(null);
+
+  const loadAddresses = useCallback(async () => {
+    const d = await api('/emails');
+    if (Array.isArray(d)) setAddresses(d);
+  }, [api]);
+
+  const loadInbox = useCallback(async (address) => {
+    setLoadingEmails(true);
+    try {
+      const d = await api(`/emails/inbox/${encodeURIComponent(address)}`);
+      if (Array.isArray(d)) setEmails(d);
+    } catch {}
+    setLoadingEmails(false);
+  }, [api]);
+
+  useEffect(() => {
+    loadAddresses();
+    fetch(`${API}/domains`).then(r => r.json()).then(d => {
+      if (Array.isArray(d)) {
+        const real = d.filter(dom => !dom.includes('pages.dev') && !dom.includes('workers.dev'));
+        setAvailDomains(real);
+        if (real.length > 0) setGenDomain(real[0]);
+      }
+    }).catch(() => {});
+  }, [loadAddresses]);
+
+  useEffect(() => {
+    if (!selectedAddr) return;
+    setEmails([]); setSelectedEmail(null);
+    loadInbox(selectedAddr);
+    pollRef.current = setInterval(() => loadInbox(selectedAddr), 5000);
+    return () => clearInterval(pollRef.current);
+  }, [selectedAddr, loadInbox]);
+
+  const handleGenerate = async (e) => {
+    e.preventDefault();
+    setGenerating(true); setGenError('');
+    try {
+      const d = await api('/emails/generate', 'POST', { prefix: genPrefix.trim() || undefined, domain: genDomain });
+      if (d.error) { setGenError(d.error); }
+      else if (d.address) {
+        await loadAddresses();
+        setSelectedAddr(d.address);
+        setShowGenForm(false);
+        setGenPrefix('');
+      }
+    } catch { setGenError('Erro ao gerar. Tente novamente.'); }
+    setGenerating(false);
+  };
+
+  const deleteAddress = async (address) => {
+    if (!window.confirm(`Deletar ${address} e todos os emails recebidos?`)) return;
+    await api(`/emails/address/${encodeURIComponent(address)}`, 'DELETE');
+    if (selectedAddr === address) { setSelectedAddr(null); setEmails([]); setSelectedEmail(null); }
+    loadAddresses();
+  };
+
+  const deleteEmail = async (emailId) => {
+    await api(`/emails/message/${emailId}`, 'DELETE');
+    setEmails(prev => prev.filter(m => m.id !== emailId));
+    if (selectedEmail?.id === emailId) setSelectedEmail(null);
+  };
+
+  const copyAddr = (addr) => {
+    navigator.clipboard.writeText(addr);
+    setCopiedAddr(addr);
+    setTimeout(() => setCopiedAddr(null), 2000);
+  };
+
+  const timeAgo = (iso) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'agora';
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h`;
+    return `${Math.floor(hrs / 24)}d`;
+  };
+
+  return (
+    <PageWrap style={{ maxWidth: 1100 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: showGenForm ? 12 : 20 }}>
+        <div>
+          <h1 style={{ color: P.text, fontSize: 16, fontWeight: 700, fontFamily: 'monospace', margin: 0 }}>emails temporários</h1>
+          <div style={{ color: P.textMuted, fontSize: 11, fontFamily: 'monospace', marginTop: 3 }}>// receba emails sem expor seu email real</div>
+        </div>
+        <Btn primary onClick={() => { setShowGenForm(p => !p); setGenError(''); }}>
+          {showGenForm ? '✕ cancelar' : '+ gerar email'}
+        </Btn>
+      </div>
+
+      {/* Formulário de geração */}
+      {showGenForm && (
+        <Card style={{ marginBottom: 20 }}>
+          <form onSubmit={handleGenerate}>
+            <div style={{ color: P.textDim, fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>// novo endereço de email</div>
+
+            {/* Preview do endereço */}
+            <div style={{ background: P.surface2, border: `1px solid ${P.border}`, borderRadius: 4, padding: '10px 14px', fontFamily: 'monospace', fontSize: 13, color: P.accent, marginBottom: 16 }}>
+              <span style={{ color: genPrefix ? P.text : P.textDim }}>{genPrefix || 'aleatório'}</span>
+              <span style={{ color: P.textDim }}>@</span>
+              <span style={{ color: P.accent }}>{genDomain || '...'}</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+              {/* Prefixo */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={S.lbl}>nome do email (opcional)</label>
+                <input
+                  style={S.inp}
+                  value={genPrefix}
+                  onChange={e => setGenPrefix(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '').substring(0, 30))}
+                  placeholder="deixe vazio para gerar aleatório"
+                  autoFocus
+                />
+                <div style={{ color: P.textDim, fontSize: 10, fontFamily: 'monospace', marginTop: 4 }}>// letras minúsculas, números, . _ -</div>
+              </div>
+
+              {/* Domínio */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={S.lbl}>domínio</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 2 }}>
+                  {availDomains.map(d => (
+                    <button key={d} type="button" onClick={() => setGenDomain(d)} style={{
+                      background: genDomain === d ? P.accent : P.surface2,
+                      color: genDomain === d ? '#0d1117' : P.textMuted,
+                      border: `1px solid ${genDomain === d ? P.accent : P.border}`,
+                      borderRadius: 4, padding: '7px 14px',
+                      fontSize: 12, fontFamily: 'monospace',
+                      cursor: 'pointer', fontWeight: genDomain === d ? 700 : 400,
+                    }}>
+                      {d}
+                    </button>
+                  ))}
+                  {availDomains.length === 0 && <span style={{ color: P.textDim, fontSize: 12, fontFamily: 'monospace' }}>carregando...</span>}
+                </div>
+              </div>
+            </div>
+
+            {genError && <ErrBox>{genError}</ErrBox>}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 8, borderTop: `1px solid ${P.border}` }}>
+              <Btn type="submit" primary disabled={generating || !genDomain}>
+                {generating ? 'gerando...' : 'gerar endereço →'}
+              </Btn>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '290px 1fr', gap: 12, minHeight: 520 }}>
+        {/* Lista de endereços */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ color: P.textDim, fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
+            // {addresses.length} endereço{addresses.length !== 1 ? 's' : ''}
+          </div>
+
+          {addresses.length === 0 ? (
+            <div style={{ background: P.surface, border: `1px solid ${P.border}`, borderRadius: 6, padding: '36px 16px', textAlign: 'center', color: P.textDim, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.8 }}>
+              // nenhum email gerado<br />
+              <span style={{ fontSize: 11 }}>clique em "+ gerar email"</span>
+            </div>
+          ) : addresses.map(a => (
+            <div key={a.address} onClick={() => setSelectedAddr(a.address)} style={{
+              background: selectedAddr === a.address ? P.surface2 : P.surface,
+              border: `1px solid ${selectedAddr === a.address ? P.accent : P.border}`,
+              borderLeft: `3px solid ${selectedAddr === a.address ? P.accent : 'transparent'}`,
+              borderRadius: 6, padding: '12px 14px', cursor: 'pointer',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <div style={{ color: P.accent, fontSize: 11, fontFamily: 'monospace', wordBreak: 'break-all', flex: 1, marginRight: 8, lineHeight: 1.5 }}>{a.address}</div>
+                {a.unread_count > 0 && (
+                  <span style={{ background: P.accent, color: '#0d1117', borderRadius: 10, padding: '1px 7px', fontSize: 10, fontFamily: 'monospace', fontWeight: 700, flexShrink: 0 }}>
+                    {a.unread_count}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={e => { e.stopPropagation(); copyAddr(a.address); }} style={{
+                  background: 'transparent', border: `1px solid ${P.border}`, borderRadius: 3,
+                  padding: '3px 8px', fontSize: 10, fontFamily: 'monospace', cursor: 'pointer',
+                  color: copiedAddr === a.address ? P.green : P.textMuted,
+                }}>
+                  {copiedAddr === a.address ? '✓ copiado' : '⎘ copiar'}
+                </button>
+                <button onClick={e => { e.stopPropagation(); deleteAddress(a.address); }} style={{
+                  background: 'transparent', border: `1px solid ${P.redDim}`, borderRadius: 3,
+                  padding: '3px 8px', fontSize: 10, fontFamily: 'monospace', cursor: 'pointer', color: P.red,
+                }}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Inbox */}
+        <div style={{ background: P.surface, border: `1px solid ${P.border}`, borderRadius: 6, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 520 }}>
+          {!selectedAddr ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 40, color: P.textDim, fontFamily: 'monospace', fontSize: 12, textAlign: 'center', lineHeight: 1.8 }}>
+              // selecione um endereço para ver os emails recebidos
+            </div>
+          ) : selectedEmail ? (
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ padding: '12px 16px', borderBottom: `1px solid ${P.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <button onClick={() => setSelectedEmail(null)} style={{ background: 'transparent', border: 'none', color: P.textMuted, cursor: 'pointer', fontFamily: 'monospace', fontSize: 12, padding: 0 }}>
+                  ← voltar
+                </button>
+                <button onClick={() => deleteEmail(selectedEmail.id)} style={{ background: 'transparent', border: `1px solid ${P.redDim}`, borderRadius: 3, padding: '3px 10px', fontSize: 10, fontFamily: 'monospace', cursor: 'pointer', color: P.red }}>
+                  ✕ deletar
+                </button>
+              </div>
+              <div style={{ padding: '20px 24px', borderBottom: `1px solid ${P.border}` }}>
+                <div style={{ color: P.text, fontSize: 15, fontWeight: 700, marginBottom: 12 }}>{selectedEmail.subject || '(sem assunto)'}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div><span style={{ color: P.textDim, fontSize: 11, fontFamily: 'monospace' }}>de: </span><span style={{ color: P.textMuted, fontSize: 12 }}>{selectedEmail.from_addr}</span></div>
+                  <div><span style={{ color: P.textDim, fontSize: 11, fontFamily: 'monospace' }}>para: </span><span style={{ color: P.textMuted, fontSize: 12 }}>{selectedEmail.address}</span></div>
+                  <div><span style={{ color: P.textDim, fontSize: 11, fontFamily: 'monospace' }}>em: </span><span style={{ color: P.textMuted, fontSize: 12 }}>{new Date(selectedEmail.received_at).toLocaleString('pt-BR')}</span></div>
+                </div>
+              </div>
+              <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
+                <pre style={{ color: P.text, fontSize: 13, fontFamily: 'system-ui, sans-serif', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {selectedEmail.body_text || '(email sem conteúdo de texto)'}
+                </pre>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ padding: '12px 16px', borderBottom: `1px solid ${P.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ color: P.accent, fontSize: 11, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedAddr}</div>
+                <button onClick={() => loadInbox(selectedAddr)} style={{ background: 'transparent', border: `1px solid ${P.border}`, borderRadius: 3, padding: '3px 10px', fontSize: 10, fontFamily: 'monospace', cursor: 'pointer', color: P.textMuted }}>
+                  ↻ atualizar
+                </button>
+              </div>
+              {loadingEmails && emails.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center', color: P.textDim, fontFamily: 'monospace', fontSize: 12 }}>// carregando...</div>
+              ) : emails.length === 0 ? (
+                <div style={{ padding: '48px 24px', textAlign: 'center', color: P.textDim, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.8 }}>
+                  // nenhum email recebido ainda<br />
+                  <span style={{ fontSize: 11 }}>atualizando automaticamente a cada 5s...</span>
+                </div>
+              ) : emails.map((m) => (
+                <div key={m.id}
+                  onClick={() => setSelectedEmail(m)}
+                  onMouseEnter={e => e.currentTarget.style.background = P.surface2}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  style={{ padding: '14px 16px', borderBottom: `1px solid ${P.border}`, cursor: 'pointer', background: 'transparent', display: 'flex', gap: 12, alignItems: 'flex-start' }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: P.text, fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>
+                      {m.subject || '(sem assunto)'}
+                    </div>
+                    <div style={{ color: P.textMuted, fontSize: 11, fontFamily: 'monospace', marginBottom: 4 }}>{m.from_addr}</div>
+                    <div style={{ color: P.textDim, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {(m.body_text || '').substring(0, 90)}
+                    </div>
+                  </div>
+                  <div style={{ color: P.textDim, fontSize: 10, fontFamily: 'monospace', flexShrink: 0 }}>{timeAgo(m.received_at)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+    </PageWrap>
   );
 }
 
@@ -1012,6 +1368,22 @@ function Field({ label, value, onChange, type = 'text', placeholder, required, a
         placeholder={placeholder}
         required={required}
         autoFocus={autoFocus}
+        maxLength={maxLength}
+      />
+    </div>
+  );
+}
+
+function TextAreaField({ label, value, onChange, placeholder, rows = 3, maxLength }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label style={S.lbl}>{label}</label>
+      <textarea
+        style={{ ...S.inp, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, paddingTop: 8 }}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
         maxLength={maxLength}
       />
     </div>

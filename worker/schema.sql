@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS sites (
   foto_url TEXT DEFAULT '',
   fb_verification TEXT DEFAULT '',
   dns_txt_verification TEXT DEFAULT '',
+  atividade_principal TEXT DEFAULT '',
+  data_abertura TEXT DEFAULT '',
+  descricao TEXT DEFAULT '',
   repo_name TEXT,
   repo_url TEXT,
   site_url TEXT,
@@ -45,3 +48,24 @@ CREATE TABLE IF NOT EXISTS sites (
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sites_user_id ON sites(user_id);
 CREATE INDEX IF NOT EXISTS idx_sites_status ON sites(status);
+
+CREATE TABLE IF NOT EXISTS temp_email_addresses (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  address TEXT NOT NULL UNIQUE,
+  domain TEXT NOT NULL DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS received_emails (
+  id TEXT PRIMARY KEY,
+  address TEXT NOT NULL,
+  from_addr TEXT NOT NULL,
+  subject TEXT DEFAULT '',
+  body_text TEXT DEFAULT '',
+  received_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_temp_addrs_user ON temp_email_addresses(user_id);
+CREATE INDEX IF NOT EXISTS idx_received_emails_addr ON received_emails(address);

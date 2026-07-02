@@ -1,6 +1,7 @@
 export const generateHTML = (data) => {
   const { razao_social, cnpj, endereco, bairro, cidade, estado, cep,
-          telefone, email, nome_topo, foto_url, fb_verification } = data;
+          telefone, email, nome_topo, foto_url, fb_verification,
+          atividade_principal, data_abertura, descricao } = data;
 
   const num = telefone ? telefone.replace(/\D/g, '') : '';
   const ddd = num.substring(0, 2);
@@ -10,7 +11,19 @@ export const generateHTML = (data) => {
   const slug = displayName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '-');
   const enderecoCompleto = [endereco, bairro, cidade && estado ? `${cidade} - ${estado}` : cidade || estado, cep ? `CEP ${cep}` : ''].filter(Boolean).join(', ');
   const waLink = num ? `https://wa.me/55${num}?text=Ol%C3%A1%2C%20vim%20pelo%20site%20de%20${encodeURIComponent(displayName)}%20e%20gostaria%20de%20mais%20informa%C3%A7%C3%B5es.` : '#';
-  const anoFundacao = ano - Math.floor(Math.random() * 8 + 3);
+
+  // Usa a data real de abertura do CNPJ (Receita Federal) quando dispon\u00edvel.
+  // S\u00f3 recorre a uma estimativa quando o dado real n\u00e3o veio preenchido (ex: sites antigos).
+  const aberturaYear = data_abertura ? parseInt(String(data_abertura).slice(0, 4), 10) : null;
+  const anoFundacao = (aberturaYear && aberturaYear <= ano) ? aberturaYear : (ano - Math.floor(Math.random() * 8 + 3));
+
+  const ramo = (atividade_principal || '').trim();
+  const heroSub = (descricao || '').trim()
+    || (ramo ? `Empresa brasileira atuante no ramo de ${ramo.toLowerCase()}, comprometida com a entrega de resultados reais, transpar\u00eancia total e satisfa\u00e7\u00e3o dos nossos clientes.`
+             : `Empresa brasileira com atua\u00e7\u00e3o s\u00f3lida, comprometida com a entrega de resultados reais, transpar\u00eancia total e satisfa\u00e7\u00e3o dos nossos clientes em cada etapa.`);
+  const aboutText = (descricao || '').trim()
+    || (ramo ? `A ${displayName} atua no ramo de ${ramo.toLowerCase()} desde ${anoFundacao}, no mercado brasileiro, com foco em entregar valor real e um atendimento pr\u00f3ximo a cada cliente.`
+             : `A ${displayName} \u00e9 uma empresa brasileira registrada e atuante desde ${anoFundacao}. Nossa miss\u00e3o \u00e9 entregar solu\u00e7\u00f5es de alto impacto para nossos clientes, com responsabilidade, \u00e9tica e total transpar\u00eancia em todas as rela\u00e7\u00f5es comerciais.`);
 
   // Seleciona variante deterministicamente pelo CNPJ
   const digits = (cnpj || '').replace(/\D/g, '');
@@ -92,13 +105,14 @@ export const generateHTML = (data) => {
   ]
   </script>`;
 
-  if (variant === 0) return templateNavyBlue({ displayName, razao_social, cnpj, slug, enderecoCompleto, endereco, bairro, cep, num, telFormatted, email, foto_url, waLink, anoFundacao, ano, cidade, estado, metaTags });
-  if (variant === 1) return templateGreenDark({ displayName, razao_social, cnpj, slug, enderecoCompleto, endereco, bairro, cep, num, telFormatted, email, foto_url, waLink, anoFundacao, ano, cidade, estado, metaTags });
-  return templateSlateOrange({ displayName, razao_social, cnpj, slug, enderecoCompleto, endereco, bairro, cep, num, telFormatted, email, foto_url, waLink, anoFundacao, ano, cidade, estado, metaTags });
+  const shared = { displayName, razao_social, cnpj, slug, enderecoCompleto, endereco, bairro, cep, num, telFormatted, email, foto_url, waLink, anoFundacao, ano, cidade, estado, metaTags, heroSub, aboutText, ramo };
+  if (variant === 0) return templateNavyBlue(shared);
+  if (variant === 1) return templateGreenDark(shared);
+  return templateSlateOrange(shared);
 };
 
 // ── VARIANTE 0: Navy / Azul (clássico corporativo) ──────────────
-function templateNavyBlue({ displayName, razao_social, cnpj, slug, enderecoCompleto, endereco, bairro, cep, num, telFormatted, email, foto_url, waLink, anoFundacao, ano, cidade, estado, metaTags }) {
+function templateNavyBlue({ displayName, razao_social, cnpj, slug, enderecoCompleto, endereco, bairro, cep, num, telFormatted, email, foto_url, waLink, anoFundacao, ano, cidade, estado, metaTags, heroSub, aboutText, ramo }) {
   return `<!DOCTYPE html>
 <html lang="pt-BR" prefix="og: https://ogp.me/ns#">
 <head>${metaTags}
@@ -218,7 +232,7 @@ function templateNavyBlue({ displayName, razao_social, cnpj, slug, enderecoCompl
   <div class="badge">Empresa Verificada e Registrada</div>
   ${foto_url ? `<img src="${foto_url}" alt="${displayName}" class="avatar">` : ''}
   <h1>${displayName}</h1>
-  <p class="hero-sub">Empresa brasileira com atuação sólida, comprometida com a entrega de resultados reais, transparência total e satisfação dos nossos clientes em cada etapa.</p>
+  <p class="hero-sub">${heroSub}</p>
   <p class="hero-cnpj">CNPJ ${cnpj} · ${cidade || 'Brasil'}${estado ? ', ' + estado : ''}</p>
   <div class="hero-btns">
     ${num ? `<a href="${waLink}" target="_blank" class="btn-p">Falar no WhatsApp</a>` : ''}
@@ -238,7 +252,7 @@ function templateNavyBlue({ displayName, razao_social, cnpj, slug, enderecoCompl
   <div>
     <p class="lbl">Quem somos</p>
     <h2 class="ttl">Uma empresa construída sobre confiança e resultados</h2>
-    <p class="desc">A ${displayName} é uma empresa brasileira registrada e atuante desde ${anoFundacao}. Nossa missão é entregar soluções de alto impacto para nossos clientes, com responsabilidade, ética e total transparência em todas as relações comerciais.</p>
+    <p class="desc">${aboutText}</p>
     <ul class="about-list">
       <li>Mais de ${ano - anoFundacao} anos de experiência no mercado brasileiro</li>
       <li>Empresa devidamente registrada na Receita Federal do Brasil</li>
@@ -352,7 +366,7 @@ function templateNavyBlue({ displayName, razao_social, cnpj, slug, enderecoCompl
 }
 
 // ── VARIANTE 1: Verde Escuro / Moderno ──────────────────────────
-function templateGreenDark({ displayName, razao_social, cnpj, slug, enderecoCompleto, endereco, bairro, cep, num, telFormatted, email, foto_url, waLink, anoFundacao, ano, cidade, estado, metaTags }) {
+function templateGreenDark({ displayName, razao_social, cnpj, slug, enderecoCompleto, endereco, bairro, cep, num, telFormatted, email, foto_url, waLink, anoFundacao, ano, cidade, estado, metaTags, heroSub, aboutText, ramo }) {
   return `<!DOCTYPE html>
 <html lang="pt-BR" prefix="og: https://ogp.me/ns#">
 <head>${metaTags}
@@ -481,7 +495,7 @@ function templateGreenDark({ displayName, razao_social, cnpj, slug, enderecoComp
     <div class="hero-tag">Empresa Verificada · CNPJ Ativo</div>
     ${foto_url ? `<img src="${foto_url}" alt="${displayName}" class="hero-avatar">` : ''}
     <h1>${displayName}</h1>
-    <p class="hero-sub">Empresa brasileira registrada e atuante, com compromisso real de entregar resultados, transparência e qualidade em cada projeto.</p>
+    <p class="hero-sub">${heroSub}</p>
     <p class="hero-cnpj">CNPJ ${cnpj} · ${cidade || 'Brasil'}${estado ? ' / ' + estado : ''}</p>
     <div class="hero-btns">
       ${num ? `<a href="${waLink}" target="_blank" class="btn-p">💬 WhatsApp</a>` : ''}
@@ -512,7 +526,7 @@ function templateGreenDark({ displayName, razao_social, cnpj, slug, enderecoComp
   <div>
     <p class="lbl">Quem somos</p>
     <h2 class="ttl">Solidez e confiança desde ${anoFundacao}</h2>
-    <p class="desc">A ${displayName} nasceu com o propósito de oferecer soluções reais para o mercado brasileiro. Com equipe qualificada e processos transparentes, construímos uma trajetória de resultados consistentes.</p>
+    <p class="desc">${aboutText}</p>
     <ul class="feature-list">
       <li><div class="f-check">✓</div> ${ano - anoFundacao}+ anos de atuação no mercado brasileiro</li>
       <li><div class="f-check">✓</div> Registrada na Receita Federal — CNPJ ${cnpj}</li>
@@ -624,7 +638,7 @@ function templateGreenDark({ displayName, razao_social, cnpj, slug, enderecoComp
 }
 
 // ── VARIANTE 2: Slate / Laranja (bold minimalista) ───────────────
-function templateSlateOrange({ displayName, razao_social, cnpj, slug, enderecoCompleto, endereco, bairro, cep, num, telFormatted, email, foto_url, waLink, anoFundacao, ano, cidade, estado, metaTags }) {
+function templateSlateOrange({ displayName, razao_social, cnpj, slug, enderecoCompleto, endereco, bairro, cep, num, telFormatted, email, foto_url, waLink, anoFundacao, ano, cidade, estado, metaTags, heroSub, aboutText, ramo }) {
   return `<!DOCTYPE html>
 <html lang="pt-BR" prefix="og: https://ogp.me/ns#">
 <head>${metaTags}
@@ -755,7 +769,7 @@ function templateSlateOrange({ displayName, razao_social, cnpj, slug, enderecoCo
     <div class="hero-tag">Empresa Verificada</div>
     ${foto_url ? `<img src="${foto_url}" alt="${displayName}" class="hero-avatar">` : ''}
     <h1>${displayName}</h1>
-    <p class="hero-sub">Empresa brasileira registrada, comprometida com transparência, qualidade e resultados concretos para cada cliente.</p>
+    <p class="hero-sub">${heroSub}</p>
     <p class="hero-cnpj">CNPJ ${cnpj} · ${cidade || 'Brasil'}${estado ? ' · ' + estado : ''}</p>
     <div class="hero-btns">
       ${num ? `<a href="${waLink}" target="_blank" class="btn-p">WhatsApp</a>` : ''}
@@ -785,7 +799,7 @@ function templateSlateOrange({ displayName, razao_social, cnpj, slug, enderecoCo
   <div>
     <p class="lbl">Quem somos</p>
     <h2 class="ttl">Empresa sólida, resultados reais</h2>
-    <p class="desc">A ${displayName} atua no mercado brasileiro desde ${anoFundacao}, com foco em entregar valor real. Nossa história é construída sobre a confiança dos clientes e a qualidade constante dos serviços.</p>
+    <p class="desc">${aboutText}</p>
     <ul class="check-list">
       <li><div class="chk">✓</div> ${ano - anoFundacao} anos de experiência e atuação no mercado</li>
       <li><div class="chk">✓</div> Registrada na Receita Federal — CNPJ ${cnpj}</li>

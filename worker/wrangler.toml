@@ -1,9 +1,21 @@
 name = "site-factory-worker"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
+workers_dev = true
+
+routes = [
+  { pattern = "*.metaparceirosbr.com.br/*", zone_name = "metaparceirosbr.com.br" },
+  { pattern = "*.metaparceirosbr.com.br", zone_name = "metaparceirosbr.com.br" },
+  { pattern = "*.fluxiamf.com.br/*", zone_name = "fluxiamf.com.br" },
+  { pattern = "*.fluxiamf.com.br", zone_name = "fluxiamf.com.br" },
+  { pattern = "*.cecconelloloja.com.br/*", zone_name = "cecconelloloja.com.br" },
+  { pattern = "*.cecconelloloja.com.br", zone_name = "cecconelloloja.com.br" }
+]
 
 [vars]
-GITHUB_USERNAME = "bmverificada"
+ALLOWED_DOMAINS = '["metaparceirosbr.com.br","fluxiamf.com.br","cecconelloloja.com.br","pages.dev","workers.dev"]'
+EMAIL_DOMAIN = "metaparceirosbr.com.br"
+WORKERS_SUBDOMAIN = "oficialbrasil"
 
 [triggers]
 crons = ["* * * * *"]
@@ -12,3 +24,7 @@ crons = ["* * * * *"]
 binding = "DB"
 database_name = "site-factory-db"
 database_id = "7810c353-3340-4310-b9ff-f7d607d7f6fe"
+
+[[kv_namespaces]]
+binding = "SITES_KV"
+id = "a9eff8e4fd6e40e2adb4c9c82105dfc0"
