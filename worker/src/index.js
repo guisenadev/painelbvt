@@ -483,7 +483,8 @@ async function handleRequest(request, env, ctx) {
 
   // ── Admin ────────────────────────────────────────────────────
   if (path.startsWith('/api/admin')) {
-    if (!user || user.role !== 'admin') return json({ error: 'Acesso negado' }, 403);
+    if (!user) return json({ error: 'Não autenticado' }, 401);
+    if (user.role !== 'admin') return json({ error: 'Acesso negado' }, 403);
 
     if (method === 'GET' && path === '/api/admin/users') {
       const { results } = await env.DB.prepare(
