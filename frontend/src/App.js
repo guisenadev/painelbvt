@@ -24,7 +24,7 @@ const P = {
 };
 
 // ── API hook ─────────────────────────────────────────────────────
-function useApi() {
+function useApi(onUnauthorized) {
   const getToken = () => localStorage.getItem('bvt_token');
   return useCallback(async (path, method = 'GET', body) => {
     const token = getToken();
@@ -36,8 +36,9 @@ function useApi() {
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
+    if (r.status === 401 && token && path !== '/auth/login') onUnauthorized?.();
     return r.json();
-  }, []);
+  }, [onUnauthorized]);
 }
 
 const saveAuth = (data) => {
@@ -763,7 +764,7 @@ function AdminPage({ api }) {
 }
 
 // ── Modal Auth (login) ────────────────────────────────────────────
-function AuthModal({ onLogin, onClose }) {
+function AuthModal({ onLogin, onClose, expiredNotice }) {
   const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -796,6 +797,7 @@ function AuthModal({ onLogin, onClose }) {
           <button style={{ background: 'transparent', border: 'none', color: P.textDim, cursor: 'pointer', fontSize: 20, lineHeight: 1 }} onClick={onClose}>×</button>
         </div>
         <form onSubmit={submit} style={{ padding: '0 20px 24px' }}>
+          {expiredNotice && <ErrBox>Sua sessão expirou. Faça login novamente.</ErrBox>}
           <Field label="usuário" value={form.username} onChange={f('username')} autoFocus required />
           <Field label="senha" type="password" value={form.password} onChange={f('password')} required />
           {error && <ErrBox>{error}</ErrBox>}
@@ -824,7 +826,10 @@ export default function App() {
   });
   const [page, setPage] = useState('home');
   const [authModal, setAuthModal] = useState(null);
-  const api = useApi();
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const api = useApi(useCallback(() => {
+    clearAuth(); setAuth(null); setPage('home'); setSessionExpired(true); setAuthModal('login');
+  }, []));
 
   if (MAINTENANCE) return <MaintenancePage />;
 
@@ -855,7 +860,13 @@ export default function App() {
 
         <HomePage onStart={() => setAuthModal('login')} />
 
-        {authModal && <AuthModal onLogin={handleLogin} onClose={() => setAuthModal(null)} />}
+        {authModal && (
+          <AuthModal
+            onLogin={(d) => { setSessionExpired(false); handleLogin(d); }}
+            onClose={() => { setSessionExpired(false); setAuthModal(null); }}
+            expiredNotice={sessionExpired}
+          />
+        )}
       </div>
     );
   }
