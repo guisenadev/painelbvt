@@ -297,18 +297,32 @@ function getHeader(headers, name) {
   return m ? m[1].replace(/\r?\n\t/g, ' ').trim() : '';
 }
 
-function decodeTransfer(body, enc) {
+function binaryStringToBytes(bin) {
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) & 0xff;
+  return bytes;
+}
+
+function decodeBytes(bin, charset) {
+  try { return new TextDecoder(charset || 'utf-8').decode(binaryStringToBytes(bin)); }
+  catch { try { return new TextDecoder('utf-8').decode(binaryStringToBytes(bin)); } catch { return bin; } }
+}
+
+function decodeTransfer(body, enc, charset) {
   if (enc === 'base64') {
-    try { return atob(body.replace(/\s+/g, '')); } catch { return body; }
+    try { return decodeBytes(atob(body.replace(/\s+/g, '')), charset); } catch { return body; }
   }
   if (enc === 'quoted-printable') {
-    return body.replace(/=\r?\n/g, '').replace(/=([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+    const bin = body.replace(/=\r?\n/g, '').replace(/=([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+    return decodeBytes(bin, charset);
   }
   return body;
 }
 
 function stripHtmlTags(html) {
   return html
+    .replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<head[\s\S]*?<\/head>/gi, '')
     .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n')
     .replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"')
@@ -319,24 +333,41 @@ function extractPart(hdr, body) {
   const ct = getHeader(hdr, 'Content-Type') || 'text/plain';
   const ctL = ct.toLowerCase();
   const enc = getHeader(hdr, 'Content-Transfer-Encoding').toLowerCase();
-  if (ctL.startsWith('text/plain')) return decodeTransfer(body, enc);
-  if (ctL.startsWith('text/html')) return stripHtmlTags(decodeTransfer(body, enc));
+  const csm = ct.match(/charset=["']?([\w-]+)["']?/i);
+  const charset = csm ? csm[1] : 'utf-8';
+  if (ctL.startsWith('text/plain')) return decodeTransfer(body, enc, charset);
+  if (ctL.startsWith('text/html')) return stripHtmlTags(decodeTransfer(body, enc, charset));
   if (ctL.startsWith('multipart/')) {
     const bm = ct.match(/boundary=["']?([^"'\s;]+)["']?/i);
-    if (!bm) return '';
+    if (!bm) return stripHtmlTags(decodeTransfer(body, enc, charset));
     const boundary = bm[1];
+    const splitPart = (p) => {
+      const si = p.indexOf('\r\n\r\n') !== -1 ? p.indexOf('\r\n\r\n') : p.indexOf('\n\n');
+      if (si === -1) return null;
+      const ph = p.substring(0, si); const pb = p.substring(si + (p.indexOf('\r\n\r\n') !== -1 ? 4 : 2));
+      return [ph, pb];
+    };
     const parts = body.split('--' + boundary).slice(1).filter(p => !p.startsWith('--'));
     const tryType = (type) => {
       for (const p of parts) {
-        const si = p.indexOf('\r\n\r\n') !== -1 ? p.indexOf('\r\n\r\n') : p.indexOf('\n\n');
-        if (si === -1) continue;
-        const ph = p.substring(0, si); const pb = p.substring(si + (p.indexOf('\r\n\r\n') !== -1 ? 4 : 2));
-        const pct = getHeader(ph, 'Content-Type') || '';
-        if (pct.toLowerCase().startsWith(type)) { const r = extractPart(ph, pb); if (r.trim()) return r; }
+        const split = splitPart(p);
+        if (!split) continue;
+        const [ph] = split;
+        const pct = (getHeader(ph, 'Content-Type') || 'text/plain').toLowerCase();
+        if (pct.startsWith(type)) { const r = extractPart(...split); if (r.trim()) return r; }
       }
       return null;
     };
-    return tryType('text/plain') || tryType('text/html') || tryType('multipart/') || '';
+    const fallback = () => {
+      for (const p of parts) {
+        const split = splitPart(p);
+        if (!split) continue;
+        const r = extractPart(...split);
+        if (r.trim()) return r;
+      }
+      return '';
+    };
+    return tryType('text/plain') || tryType('text/html') || tryType('multipart/') || fallback();
   }
   return '';
 }
@@ -655,7 +686,11 @@ async function handleRequest(request, env, ctx) {
 
       try {
         if (existing.repo_name) {
-          if (existing.domain === 'workers.dev') {
+          if (existing.domain === 'pages.dev') {
+            const html = generateHTML({ ...updated, fb_verification: fbVerif });
+            await cfPagesDeploy(existing.repo_name, html, env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_API_TOKEN, fbVerif);
+            ctx.waitUntil(triggerFacebookScrape(existing.site_url, fbVerif));
+          } else if (existing.domain === 'workers.dev') {
             const workersSubdomain = env.WORKERS_SUBDOMAIN || 'viraloficial9';
             await cfWorkerDeploy(existing.repo_name, { ...updated, fb_verification: fbVerif }, env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_API_TOKEN, workersSubdomain);
           } else {
