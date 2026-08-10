@@ -4,17 +4,17 @@ compatibility_date = "2024-01-01"
 workers_dev = true
 
 routes = [
-  { pattern = "*.metaparceirosbr.com.br/*", zone_name = "metaparceirosbr.com.br" },
-  { pattern = "*.metaparceirosbr.com.br", zone_name = "metaparceirosbr.com.br" },
-  { pattern = "*.fluxiamf.com.br/*", zone_name = "fluxiamf.com.br" },
-  { pattern = "*.fluxiamf.com.br", zone_name = "fluxiamf.com.br" },
-  { pattern = "*.cecconelloloja.com.br/*", zone_name = "cecconelloloja.com.br" },
-  { pattern = "*.cecconelloloja.com.br", zone_name = "cecconelloloja.com.br" }
+  { pattern = "*.painelbvt.com.br/*", zone_name = "painelbvt.com.br" },
+  { pattern = "*.painelbvt.com.br", zone_name = "painelbvt.com.br" },
+  { pattern = "*.painelgsw.com.br/*", zone_name = "painelgsw.com.br" },
+  { pattern = "*.painelgsw.com.br", zone_name = "painelgsw.com.br" },
+  { pattern = "*.vivaras.com.br/*", zone_name = "vivaras.com.br" },
+  { pattern = "*.vivaras.com.br", zone_name = "vivaras.com.br" }
 ]
 
 [vars]
-ALLOWED_DOMAINS = '["metaparceirosbr.com.br","fluxiamf.com.br","cecconelloloja.com.br","pages.dev","workers.dev"]'
-EMAIL_DOMAIN = "metaparceirosbr.com.br"
+ALLOWED_DOMAINS = '["painelbvt.com.br","painelgsw.com.br","vivaras.com.br","pages.dev","workers.dev"]'
+EMAIL_DOMAIN = "vivaras.com.br"
 WORKERS_SUBDOMAIN = "oficialbrasil"
 
 [triggers]

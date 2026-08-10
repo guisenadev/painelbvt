@@ -1,7 +1,7 @@
 export const generateHTML = (data) => {
   const { razao_social, cnpj, endereco, bairro, cidade, estado, cep,
           telefone, email, nome_topo, foto_url, fb_verification,
-          atividade_principal, data_abertura, descricao } = data;
+          atividade_principal, data_abertura, descricao, site_url } = data;
 
   const num = telefone ? telefone.replace(/\D/g, '') : '';
   const ddd = num.substring(0, 2);
@@ -9,6 +9,7 @@ export const generateHTML = (data) => {
   const ano = new Date().getFullYear();
   const displayName = nome_topo || razao_social;
   const slug = displayName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '-');
+  const canonicalUrl = site_url ? site_url.replace(/\/$/, '') + '/' : `https://${slug}.pages.dev/`;
   const enderecoCompleto = [endereco, bairro, cidade && estado ? `${cidade} - ${estado}` : cidade || estado, cep ? `CEP ${cep}` : ''].filter(Boolean).join(', ');
   const waLink = num ? `https://wa.me/55${num}?text=Ol%C3%A1%2C%20vim%20pelo%20site%20de%20${encodeURIComponent(displayName)}%20e%20gostaria%20de%20mais%20informa%C3%A7%C3%B5es.` : '#';
 
@@ -40,12 +41,12 @@ export const generateHTML = (data) => {
   <meta name="author" content="${razao_social}">
   <meta name="robots" content="index, follow">
   <meta name="language" content="pt-BR">
-  <link rel="canonical" href="https://${slug}.pages.dev/">
+  <link rel="canonical" href="${canonicalUrl}">
   <meta property="og:type" content="business.business">
   <meta property="og:site_name" content="${displayName}">
   <meta property="og:title" content="${displayName} — Empresa Verificada">
   <meta property="og:description" content="Empresa brasileira registrada sob CNPJ ${cnpj}, sediada em ${cidade || 'Brasil'}. Transparência, qualidade e comprometimento com cada cliente.">
-  <meta property="og:url" content="https://${slug}.pages.dev/">
+  <meta property="og:url" content="${canonicalUrl}">
   <meta property="og:locale" content="pt_BR">
   ${foto_url ? `<meta property="og:image" content="${foto_url}">` : ''}
   <meta property="business:contact_data:street_address" content="${endereco || ''}">
@@ -62,7 +63,7 @@ export const generateHTML = (data) => {
       "name": "${displayName.replace(/"/g, '\\"')}",
       "legalName": "${razao_social.replace(/"/g, '\\"')}",
       "description": "Empresa brasileira registrada com CNPJ ${cnpj}. Oferecemos serviços com qualidade e comprometimento.",
-      "url": "https://${slug}.pages.dev/",
+      "url": "${canonicalUrl}",
       "foundingDate": "${anoFundacao}",
       "taxID": "${cnpj}",
       "identifier": [
@@ -91,7 +92,7 @@ export const generateHTML = (data) => {
       "name": "${displayName.replace(/"/g, '\\"')}",
       "legalName": "${razao_social.replace(/"/g, '\\"')}",
       "taxID": "${cnpj}",
-      "url": "https://${slug}.pages.dev/",
+      "url": "${canonicalUrl}",
       ${foto_url ? `"logo": "${foto_url}",` : ''}
       "address": {
         "@type": "PostalAddress",

@@ -623,6 +623,7 @@ async function handleRequest(request, env, ctx) {
         foto_url: body.foto_url || '', fb_verification: fbVerif,
         atividade_principal: body.atividade_principal || '',
         data_abertura: body.data_abertura || '', descricao: body.descricao || '',
+        site_url: siteUrl,
       };
 
       await env.DB.prepare(
