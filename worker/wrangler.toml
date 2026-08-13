@@ -14,7 +14,7 @@ routes = [
 
 [vars]
 ALLOWED_DOMAINS = '["painelbvt.com.br","painelgsw.com.br","vivaras.com.br","pages.dev","workers.dev"]'
-EMAIL_DOMAIN = "vivaras.com.br"
+EMAIL_DOMAIN = "painelbvt.com.br"
 WORKERS_SUBDOMAIN = "oficialbrasil"
 
 [triggers]
